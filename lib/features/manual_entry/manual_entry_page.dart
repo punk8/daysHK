@@ -26,12 +26,12 @@ class ManualEntryPage extends StatefulWidget {
 }
 
 class _ManualEntryPageState extends State<ManualEntryPage> {
-  final _locationController = TextEditingController(text: '香港国际机场');
-  final _noteController = TextEditingController(text: 'CA106 北京 - 香港');
-  var _entryDate = DateTime(2025, 5, 25);
-  DateTime? _exitDate = DateTime(2025, 5, 25);
+  final _locationController = TextEditingController();
+  final _noteController = TextEditingController();
+  late var _entryDate = normalizeDate(widget.today);
+  late DateTime? _exitDate = normalizeDate(widget.today);
   var _sameDayRoundTrip = true;
-  var _transportMode = '飞机';
+  String? _transportMode;
   String? _error;
 
   @override
@@ -47,6 +47,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
       _entryDate,
       _exitDate ?? widget.today,
     );
+    final openRecord = _latestOpenRecord();
 
     return AppPage(
       title: '手动补录',
@@ -71,6 +72,25 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
           onSelectionChanged: (_) {},
         ),
         const SizedBox(height: 14),
+        if (openRecord != null) ...[
+          AppCard(
+            color: AppColors.info,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline, color: AppColors.teal),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '当前已有一条 ${dateKey(openRecord.entryDate)} 起仍在香港的记录。'
+                    '如果要补录这段期间内的离港或往返，请先到“记录”页修正这条进行中记录。',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
         _DateField(
           label: '入港日期',
           date: _entryDate,
@@ -132,12 +152,15 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
             border: OutlineInputBorder(),
           ),
           items: const [
+            DropdownMenuItem(value: '', child: Text('未选择')),
             DropdownMenuItem(value: '飞机', child: Text('飞机')),
             DropdownMenuItem(value: '高铁', child: Text('高铁')),
             DropdownMenuItem(value: '巴士', child: Text('巴士')),
             DropdownMenuItem(value: '口岸步行', child: Text('口岸步行')),
           ],
-          onChanged: (value) => setState(() => _transportMode = value ?? '飞机'),
+          onChanged: (value) => setState(
+            () => _transportMode = value?.isEmpty == true ? null : value,
+          ),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -228,6 +251,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
     final error = widget.statisticsService.validateRecord(
       record,
       widget.records,
+      widget.today,
     );
     if (error != null) {
       setState(() => _error = error);
@@ -241,6 +265,19 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
         context,
       ).showSnackBar(const SnackBar(content: Text('记录已保存')));
     }
+  }
+
+  StayRecord? _latestOpenRecord() {
+    final active =
+        widget.records
+            .where(
+              (record) =>
+                  record.exitDate == null &&
+                  record.confirmationStatus != ConfirmationStatus.rejected,
+            )
+            .toList()
+          ..sort((a, b) => b.entryDate.compareTo(a.entryDate));
+    return active.isEmpty ? null : active.first;
   }
 }
 

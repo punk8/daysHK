@@ -79,6 +79,7 @@ void main() {
     final error = service.validateRecord(
       record(id: '1', entry: DateTime(2025, 6, 3), exit: DateTime(2025, 6, 1)),
       const [],
+      today,
     );
     expect(error, contains('离港日期不能早于入港日期'));
   });
@@ -90,8 +91,21 @@ void main() {
     final error = service.validateRecord(
       record(id: '2', entry: DateTime(2025, 6, 3), exit: DateTime(2025, 6, 4)),
       existing,
+      today,
     );
     expect(error, contains('重叠'));
+    expect(error, contains('2025-06-01 至 2025-06-03'));
+    expect(error, contains('手动补录 / 已确认'));
+  });
+
+  test('进行中记录按今天作为重叠结束日期并说明仍在香港', () {
+    final existing = [record(id: '1', entry: DateTime(2025, 6, 1))];
+    final error = service.validateRecord(
+      record(id: '2', entry: DateTime(2026, 1, 1), exit: DateTime(2026, 1, 2)),
+      existing,
+      today,
+    );
+    expect(error, contains('2025-06-01 起仍在香港'));
   });
 
   test('连续离港超过6个月产生提醒', () {

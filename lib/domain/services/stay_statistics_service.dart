@@ -91,6 +91,7 @@ class StayStatisticsService {
   String? validateRecord(
     StayRecord candidate,
     List<StayRecord> existingRecords,
+    DateTime today,
   ) {
     final exitDate = candidate.exitDate;
     if (exitDate != null && exitDate.isBefore(candidate.entryDate)) {
@@ -103,15 +104,29 @@ class StayStatisticsService {
           record.confirmationStatus == ConfirmationStatus.rejected) {
         continue;
       }
-      final recordEnd = record.exitDate ?? record.entryDate;
+      final recordEnd = record.exitDate ?? today;
       final overlaps =
           !candidateEnd.isBefore(record.entryDate) &&
           !candidate.entryDate.isAfter(recordEnd);
       if (overlaps) {
-        return '该记录与已有记录重叠，请先修正后再保存';
+        return '该记录与已有记录重叠：${_recordConflictLabel(record, today)}。请先修正后再保存。';
       }
     }
 
     return null;
+  }
+
+  String _recordConflictLabel(StayRecord record, DateTime today) {
+    final end = record.exitDate ?? today;
+    final dateRange = record.exitDate == null
+        ? '${dateKey(record.entryDate)} 起仍在香港'
+        : '${dateKey(record.entryDate)} 至 ${dateKey(end)}';
+    final source = switch (record.source) {
+      RecordSource.manual => '手动补录',
+      RecordSource.autoDetected => '自动检测',
+      RecordSource.userConfirmed => '用户确认',
+    };
+    final status = record.confirmationStatus.label;
+    return '$dateRange（$source / $status）';
   }
 }

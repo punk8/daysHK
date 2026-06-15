@@ -9,6 +9,9 @@ import 'package:days_in_hk/location/geofence/location_detection_service.dart';
 import 'package:days_in_hk/location/geofence/native_geofence_bridge.dart';
 import 'package:days_in_hk/location/permissions/location_permission_service.dart';
 import 'package:days_in_hk/features/records/records_page.dart';
+import 'package:days_in_hk/features/statistics/statistics_page.dart';
+import 'package:days_in_hk/domain/services/stay_statistics_service.dart';
+import 'package:days_in_hk/features/dashboard/dashboard_page.dart';
 
 class MemoryRepository implements StayRecordRepository {
   MemoryRepository(this.records);
@@ -103,6 +106,76 @@ void main() {
       find.byKey(const Key('record-edit-location-field')),
     );
     expect(locationField.controller?.text, '香港国际机场');
+  });
+
+  testWidgets('Statistics page includes years from existing records', (
+    tester,
+  ) async {
+    final now = DateTime(2026, 6, 16);
+    final records = [
+      StayRecord(
+        id: 'future-record',
+        entryDate: DateTime(2027, 1, 10),
+        exitDate: DateTime(2027, 1, 10),
+        sameDayRoundTrip: true,
+        source: RecordSource.manual,
+        confirmationStatus: ConfirmationStatus.confirmed,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatisticsPage(
+            records: records,
+            statisticsService: StayStatisticsService(),
+            today: now,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('2027年'), findsOneWidget);
+    expect(find.text('2026年'), findsOneWidget);
+  });
+
+  testWidgets('Dashboard current status ignores future records', (
+    tester,
+  ) async {
+    final now = DateTime(2026, 6, 16);
+    final records = [
+      StayRecord(
+        id: 'future-record',
+        entryDate: DateTime(2027, 1, 10),
+        exitDate: DateTime(2027, 1, 10),
+        sameDayRoundTrip: true,
+        source: RecordSource.manual,
+        confirmationStatus: ConfirmationStatus.confirmed,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DashboardPage(
+            records: records,
+            statisticsService: StayStatisticsService(),
+            today: now,
+            onManualEntry: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('当前不在香港'), findsOneWidget);
+    expect(find.text('暂无入港记录'), findsWidgets);
+    expect(find.text('最近离港 2027-01-10'), findsNothing);
   });
 }
 

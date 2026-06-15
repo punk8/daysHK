@@ -28,6 +28,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final years = _availableYears();
+    if (!years.contains(_year)) {
+      _year = years.first;
+    }
     final summary = widget.statisticsService.buildAnnualSummary(
       records: widget.records,
       year: _year,
@@ -42,18 +46,17 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return AppPage(
       title: '年度统计',
       children: [
-        SegmentedButton<int>(
-          segments: [
-            for (final year in [
-              widget.today.year,
-              widget.today.year - 1,
-              widget.today.year - 2,
-            ])
-              ButtonSegment(value: year, label: Text('$year年')),
-          ],
-          selected: {_year},
-          onSelectionChanged: (selection) =>
-              setState(() => _year = selection.first),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SegmentedButton<int>(
+            segments: [
+              for (final year in years)
+                ButtonSegment(value: year, label: Text('$year年')),
+            ],
+            selected: {_year},
+            onSelectionChanged: (selection) =>
+                setState(() => _year = selection.first),
+          ),
         ),
         const SizedBox(height: 14),
         AppCard(
@@ -172,6 +175,22 @@ class _StatisticsPageState extends State<StatisticsPage> {
         ),
       ],
     );
+  }
+
+  List<int> _availableYears() {
+    final years = <int>{
+      widget.today.year,
+      widget.today.year - 1,
+      widget.today.year - 2,
+    };
+    for (final record in widget.records) {
+      if (record.confirmationStatus == ConfirmationStatus.rejected) {
+        continue;
+      }
+      years.add(record.entryDate.year);
+      years.add((record.exitDate ?? widget.today).year);
+    }
+    return years.toList()..sort((a, b) => b.compareTo(a));
   }
 }
 

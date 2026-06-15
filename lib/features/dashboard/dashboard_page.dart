@@ -29,7 +29,8 @@ class DashboardPage extends StatelessWidget {
       year: today.year,
       today: today,
     );
-    final latest = records.isEmpty ? null : records.first;
+    final recordsUpToToday = _recordsUpToToday(records);
+    final latest = recordsUpToToday.isEmpty ? null : recordsUpToToday.first;
     final current = _currentPresence(records);
     final longest = _longestStay(records);
 
@@ -220,16 +221,17 @@ class DashboardPage extends StatelessWidget {
   }
 
   _Presence _currentPresence(List<StayRecord> records) {
-    if (records.any(
+    final recordsUpToToday = _recordsUpToToday(records);
+    if (recordsUpToToday.any(
       (record) =>
           record.confirmationStatus == ConfirmationStatus.needsConfirmation,
     )) {
       return const _Presence('需要确认记录', '有自动检测记录等待确认', 0);
     }
-    if (records.isEmpty) {
+    if (recordsUpToToday.isEmpty) {
       return const _Presence('当前不在香港', '暂无入港记录', 0);
     }
-    final sorted = [...records]
+    final sorted = [...recordsUpToToday]
       ..sort((a, b) => b.entryDate.compareTo(a.entryDate));
     final latest = sorted.first;
     if (latest.exitDate == null) {
@@ -240,6 +242,17 @@ class DashboardPage extends StatelessWidget {
       );
     }
     return _Presence('当前不在香港', '最近离港 ${dateKey(latest.exitDate!)}', 0);
+  }
+
+  List<StayRecord> _recordsUpToToday(List<StayRecord> records) {
+    final normalizedToday = normalizeDate(today);
+    return records
+        .where(
+          (record) =>
+              !normalizeDate(record.entryDate).isAfter(normalizedToday) &&
+              record.confirmationStatus != ConfirmationStatus.rejected,
+        )
+        .toList();
   }
 
   int _longestStay(List<StayRecord> records) {
