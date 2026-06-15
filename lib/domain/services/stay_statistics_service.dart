@@ -1,0 +1,117 @@
+import '../../core/time/hk_date.dart';
+import '../models/stay_record.dart';
+import '../models/stay_summary.dart';
+
+class StayStatisticsService {
+  Set<String> stayDateKeys(List<StayRecord> records, DateTime today) {
+    final keys = <String>{};
+    for (final record in records) {
+      if (record.confirmationStatus == ConfirmationStatus.rejected) {
+        continue;
+      }
+      final end = record.exitDate ?? today;
+      for (final date in enumerateInclusiveDates(record.entryDate, end)) {
+        keys.add(dateKey(date));
+      }
+    }
+    return keys;
+  }
+
+  int stayDaysForRecord(StayRecord record, DateTime today) {
+    if (record.confirmationStatus == ConfirmationStatus.rejected) {
+      return 0;
+    }
+    final end = record.exitDate ?? today;
+    return inclusiveDateCount(record.entryDate, end);
+  }
+
+  AnnualStaySummary buildAnnualSummary({
+    required List<StayRecord> records,
+    required int year,
+    required DateTime today,
+  }) {
+    final monthlyCounts = {for (var month = 1; month <= 12; month++) month: 0};
+    for (final key in stayDateKeys(records, today)) {
+      final date = DateTime.parse(key);
+      if (date.year == year) {
+        monthlyCounts[date.month] = (monthlyCounts[date.month] ?? 0) + 1;
+      }
+    }
+
+    final estimatedStayDays = monthlyCounts.values.fold<int>(
+      0,
+      (sum, value) => sum + value,
+    );
+
+    return AnnualStaySummary(
+      year: year,
+      estimatedStayDays: estimatedStayDays,
+      monthlyCounts: monthlyCounts,
+      absenceAlerts: findContinuousAbsenceAlerts(records),
+    );
+  }
+
+  List<AbsenceAlert> findContinuousAbsenceAlerts(
+    List<StayRecord> records, {
+    int thresholdDays = 183,
+  }) {
+    final activeRecords =
+        records
+            .where(
+              (record) =>
+                  record.confirmationStatus != ConfirmationStatus.rejected,
+            )
+            .toList()
+          ..sort((a, b) => a.entryDate.compareTo(b.entryDate));
+
+    final alerts = <AbsenceAlert>[];
+    for (var index = 0; index < activeRecords.length - 1; index++) {
+      final previous = activeRecords[index];
+      final next = activeRecords[index + 1];
+      final exitDate = previous.exitDate;
+      if (exitDate == null) {
+        continue;
+      }
+
+      final start = normalizeDate(exitDate).add(const Duration(days: 1));
+      final end = normalizeDate(
+        next.entryDate,
+      ).subtract(const Duration(days: 1));
+      if (end.isBefore(start)) {
+        continue;
+      }
+      final days = inclusiveDateCount(start, end);
+      if (days >= thresholdDays) {
+        alerts.add(AbsenceAlert(startDate: start, endDate: end, days: days));
+      }
+    }
+    return alerts;
+  }
+
+  String? validateRecord(
+    StayRecord candidate,
+    List<StayRecord> existingRecords,
+  ) {
+    final exitDate = candidate.exitDate;
+    if (exitDate != null && exitDate.isBefore(candidate.entryDate)) {
+      return '离港日期不能早于入港日期';
+    }
+
+    final candidateEnd = exitDate ?? candidate.entryDate;
+    for (final record in existingRecords) {
+      if (record.id == candidate.id ||
+          record.confirmationStatus == ConfirmationStatus.rejected) {
+        continue;
+      }
+      final recordEnd = record.exitDate ?? record.entryDate;
+      final overlaps =
+          !candidateEnd.isBefore(record.entryDate) &&
+          !candidate.entryDate.isAfter(recordEnd);
+      if (overlaps) {
+        return '该记录与已有记录重叠，请先修正后再保存';
+      }
+    }
+
+    return null;
+  }
+}

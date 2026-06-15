@@ -1,0 +1,8 @@
+{
+  "sourceName": "DATA.GOV.HK / Home and Youth Affairs Bureau District boundary",
+  "sourceUrl": "https://data.gov.hk/en-data/dataset/hk-had-json1-hong-kong-administrative-boundaries",
+  "downloadUrl": "https://www.had.gov.hk/psi/hong-kong-administrative-boundaries/hksar_18_district_boundary.json",
+  "downloadedAt": "2026-06-15",
+  "license": "DATA.GOV.HK terms and conditions; source attribution required",
+  "runtimeUse": "Offline point-in-polygon boundary classification for MVP"
+}
