@@ -92,13 +92,12 @@ Future<DateTime?> showAppDatePicker({
                 height: 48,
                 child: Row(
                   children: [
-                    CupertinoButton(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    AppTextButton(
+                      label: '取消',
+                      hint: '关闭日期选择器',
                       onPressed: () {
-                        AppHaptics.selection(context);
                         Navigator.pop(context);
                       },
-                      child: const Text('取消'),
                     ),
                     Expanded(
                       child: Text(
@@ -110,16 +109,13 @@ Future<DateTime?> showAppDatePicker({
                         ),
                       ),
                     ),
-                    CupertinoButton(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    AppTextButton(
+                      label: '完成',
+                      hint: '确认选择的日期',
+                      bold: true,
                       onPressed: () {
-                        AppHaptics.selection(context);
                         Navigator.pop(context, selected);
                       },
-                      child: const Text(
-                        '完成',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
                     ),
                   ],
                 ),
@@ -160,6 +156,7 @@ class AppCupertinoButton extends StatelessWidget {
     this.icon,
     this.destructive = false,
     this.filled = true,
+    this.semanticHint,
   });
 
   final String label;
@@ -167,6 +164,7 @@ class AppCupertinoButton extends StatelessWidget {
   final IconData? icon;
   final bool destructive;
   final bool filled;
+  final String? semanticHint;
 
   @override
   Widget build(BuildContext context) {
@@ -174,35 +172,147 @@ class AppCupertinoButton extends StatelessWidget {
     final resolved = context.appColor(color);
     final foreground = filled ? CupertinoColors.white : resolved;
     final background = filled ? resolved : resolved.withValues(alpha: 0.10);
-    return CupertinoButton(
-      minimumSize: const Size(44, 44),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      color: onPressed == null
-          ? context.appColor(AppColors.border)
-          : background,
-      borderRadius: BorderRadius.circular(8),
-      onPressed: onPressed == null
-          ? null
-          : () {
-              AppHaptics.selection(context);
-              onPressed!();
-            },
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 18, color: foreground),
-            const SizedBox(width: 6),
-          ],
-          Flexible(
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: foreground, fontWeight: FontWeight.w700),
+    final VoidCallback? handlePressed = onPressed == null
+        ? null
+        : () {
+            AppHaptics.selection(context);
+            onPressed!();
+          };
+    return Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: label,
+      hint: semanticHint,
+      onTap: handlePressed,
+      child: ExcludeSemantics(
+        child: CupertinoButton(
+          minimumSize: const Size(52, 52),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          color: onPressed == null
+              ? context.appColor(AppColors.border)
+              : background,
+          borderRadius: BorderRadius.circular(14),
+          onPressed: handlePressed,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 18, color: foreground),
+                const SizedBox(width: 6),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AppIconButton extends StatelessWidget {
+  const AppIconButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.hint,
+    this.color,
+    this.size = 22,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+  final String? hint;
+  final Color? color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final VoidCallback? handlePressed = onPressed == null
+        ? null
+        : () {
+            AppHaptics.selection(context);
+            onPressed!();
+          };
+    return Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: label,
+      hint: hint,
+      onTap: handlePressed,
+      child: ExcludeSemantics(
+        child: CupertinoButton(
+          minimumSize: const Size(44, 44),
+          padding: EdgeInsets.zero,
+          onPressed: handlePressed,
+          child: Icon(
+            icon,
+            color: context.appColor(color ?? AppColors.ink),
+            size: size,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AppTextButton extends StatelessWidget {
+  const AppTextButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.hint,
+    this.bold = false,
+    this.color,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16),
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final String? hint;
+  final bool bold;
+  final Color? color;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final VoidCallback? handlePressed = onPressed == null
+        ? null
+        : () {
+            AppHaptics.selection(context);
+            onPressed!();
+          };
+    return Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: label,
+      hint: hint,
+      onTap: handlePressed,
+      child: ExcludeSemantics(
+        child: CupertinoButton(
+          minimumSize: const Size(44, 44),
+          padding: padding,
+          onPressed: handlePressed,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: color == null ? null : context.appColor(color!),
+              fontWeight: bold ? FontWeight.w700 : null,
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -238,16 +348,27 @@ class AppCupertinoTextField extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        CupertinoTextField(
-          key: fieldKey,
-          controller: controller,
-          minLines: minLines,
-          maxLines: maxLines,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.appColor(AppColors.surface),
-            border: Border.all(color: context.appColor(AppColors.border)),
-            borderRadius: BorderRadius.circular(8),
+        Semantics(
+          textField: true,
+          label: label,
+          child: CupertinoTextField(
+            key: fieldKey,
+            controller: controller,
+            minLines: minLines,
+            maxLines: maxLines,
+            placeholder: label,
+            cursorColor: context.appColor(AppColors.teal),
+            style: context.appTextStyle(AppTextStyles.body),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            textInputAction: maxLines == 1
+                ? TextInputAction.done
+                : TextInputAction.newline,
+            onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+            decoration: BoxDecoration(
+              color: context.appColor(AppColors.surface),
+              border: Border.all(color: context.appColor(AppColors.border)),
+              borderRadius: BorderRadius.circular(14),
+            ),
           ),
         ),
       ],
@@ -271,65 +392,79 @@ class AppCupertinoDateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoButton(
-      minimumSize: Size.zero,
-      padding: EdgeInsets.zero,
-      onPressed: () {
-        AppHaptics.selection(context);
-        onTap();
-      },
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: context.appColor(AppColors.surface),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: context.appColor(AppColors.border)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: context.appColor(AppColors.muted),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+    final valueText = date == null ? '未选择' : dateKey(date!);
+    final borderRadius = BorderRadius.circular(14);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.appColor(AppColors.surface),
+        borderRadius: borderRadius,
+        border: Border.all(color: context.appColor(AppColors.border)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 12, right: 8, top: 10, bottom: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                button: true,
+                label: '$label，$valueText',
+                hint: '点按选择日期',
+                onTap: () {
+                  AppHaptics.selection(context);
+                  onTap();
+                },
+                child: ExcludeSemantics(
+                  child: CupertinoButton(
+                    minimumSize: const Size(44, 44),
+                    padding: EdgeInsets.zero,
+                    alignment: Alignment.centerLeft,
+                    onPressed: () {
+                      AppHaptics.selection(context);
+                      onTap();
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: context.appColor(AppColors.muted),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          valueText,
+                          style: TextStyle(
+                            color: context.appColor(AppColors.ink),
+                            fontSize: 17,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      date == null ? '未选择' : dateKey(date!),
-                      style: TextStyle(
-                        color: context.appColor(AppColors.ink),
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (onClear != null && date != null)
-                CupertinoButton(
-                  minimumSize: const Size(32, 32),
-                  padding: EdgeInsets.zero,
-                  onPressed: onClear,
-                  child: Icon(
-                    CupertinoIcons.clear_circled,
-                    color: context.appColor(AppColors.muted),
-                    size: 20,
                   ),
                 ),
-              const SizedBox(width: 4),
-              Icon(
+              ),
+            ),
+            if (onClear != null && date != null)
+              AppIconButton(
+                icon: CupertinoIcons.clear_circled,
+                label: '清除$label',
+                hint: '清除当前选择的日期',
+                color: AppColors.muted,
+                size: 20,
+                onPressed: onClear,
+              ),
+            const SizedBox(width: 4),
+            ExcludeSemantics(
+              child: Icon(
                 CupertinoIcons.calendar,
                 color: context.appColor(AppColors.teal),
                 size: 20,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

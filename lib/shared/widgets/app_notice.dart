@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 
 import '../theme/app_theme.dart';
 import 'app_haptics.dart';
+import 'cupertino_controls.dart';
 
 class AppNoticeAction {
   const AppNoticeAction({required this.label, required this.onPressed});
@@ -59,62 +61,96 @@ class _AppNoticeOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.paddingOf(context).bottom + 18;
+    final top = MediaQuery.paddingOf(context).top + 10;
+    final reduceMotion = AppHaptics.shouldReduceFeedback(context);
     return Positioned(
-      left: 16,
-      right: 16,
-      bottom: bottom,
+      left: 12,
+      right: 12,
+      top: top,
       child: SafeArea(
-        top: false,
+        bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: CupertinoPopupSurface(
-              isSurfacePainted: true,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: context.appColor(AppColors.noticeBackground),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: reduceMotion ? 1 : 0, end: 1),
+              duration: reduceMotion
+                  ? Duration.zero
+                  : const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(0, -10 * (1 - value)),
+                    child: child,
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          message,
-                          style: const TextStyle(
-                            color: CupertinoColors.white,
-                            fontSize: 14,
-                          ),
+                );
+              },
+              child: Semantics(
+                liveRegion: true,
+                label: message,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: context.appColor(AppColors.noticeBackground),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: CupertinoColors.white.withValues(alpha: 0.18),
                         ),
                       ),
-                      if (action != null) ...[
-                        const SizedBox(width: 8),
-                        CupertinoButton(
-                          minimumSize: Size.zero,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 6,
-                          ),
-                          onPressed: () {
-                            onDismiss();
-                            action!.onPressed();
-                          },
-                          child: Text(
-                            action!.label,
-                            style: const TextStyle(
-                              color: CupertinoColors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
                         ),
-                      ],
-                    ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ExcludeSemantics(
+                              child: Icon(
+                                CupertinoIcons.check_mark_circled_solid,
+                                color: CupertinoColors.white.withValues(
+                                  alpha: 0.92,
+                                ),
+                                size: 19,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                message,
+                                style: const TextStyle(
+                                  color: CupertinoColors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ),
+                            if (action != null) ...[
+                              const SizedBox(width: 8),
+                              AppTextButton(
+                                label: action!.label,
+                                hint: '执行通知操作',
+                                bold: true,
+                                color: CupertinoColors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                onPressed: () {
+                                  onDismiss();
+                                  action!.onPressed();
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

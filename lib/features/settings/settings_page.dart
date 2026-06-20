@@ -8,6 +8,7 @@ import '../../location/permissions/location_permission_service.dart';
 import '../../location/permissions/location_permission_status.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_haptics.dart';
 import '../../shared/widgets/app_notice.dart';
 import '../../shared/widgets/cupertino_controls.dart';
 import '../../shared/widgets/page_scaffold.dart';
@@ -94,23 +95,77 @@ class SettingsPage extends StatelessWidget {
         const SizedBox(height: 12),
         AppCard(
           child: Column(
-            children: const [
+            children: [
               _SettingsTile(
                 icon: CupertinoIcons.hand_raised,
                 title: '隐私说明',
                 subtitle: '本应用用于个人记录参考，不构成永居资格判断。',
+                onTap: () => _pushSettingsDetail(
+                  context,
+                  const _SettingsDetailPage(
+                    title: '隐私说明',
+                    sections: [
+                      _SettingsDetailSection(
+                        title: '本地优先',
+                        body: '入离港记录、定位候选记录和统计结果默认只保存在当前设备本地。',
+                      ),
+                      _SettingsDetailSection(
+                        title: '定位用途',
+                        body:
+                            '定位仅用于判断是否需要生成待确认的入离港候选记录。后台自动检测需要 iOS 的“始终允许”定位权限。',
+                      ),
+                      _SettingsDetailSection(
+                        title: '个人参考',
+                        body: '统计结果用于个人记录参考，不构成任何签证、永居或法律资格判断。',
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              _SettingsDivider(),
+              const _SettingsDivider(),
               _SettingsTile(
                 icon: CupertinoIcons.doc_text,
                 title: '使用条款',
                 subtitle: '统计结果基于你的记录估算，可能存在误差。',
+                onTap: () => _pushSettingsDetail(
+                  context,
+                  const _SettingsDetailPage(
+                    title: '使用条款',
+                    sections: [
+                      _SettingsDetailSection(
+                        title: '记录准确性',
+                        body: '应用会按香港自然日估算在港天数，结果取决于你保存和确认的记录是否完整。',
+                      ),
+                      _SettingsDetailSection(
+                        title: '自动检测限制',
+                        body: '定位精度、系统权限、省电策略和网络环境都可能影响自动检测结果，需要你在记录页确认或修正。',
+                      ),
+                      _SettingsDetailSection(
+                        title: '最终责任',
+                        body: '涉及法律、移民或身份资格判断时，请以官方记录和专业意见为准。',
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              _SettingsDivider(),
+              const _SettingsDivider(),
               _SettingsTile(
                 icon: CupertinoIcons.info_circle,
                 title: '关于在港日记',
                 subtitle: '版本 1.0.0',
+                onTap: () => _pushSettingsDetail(
+                  context,
+                  const _SettingsDetailPage(
+                    title: '关于在港日记',
+                    sections: [
+                      _SettingsDetailSection(
+                        title: '在港日记',
+                        body: '面向长期往返香港的人士，用轻量记录和本地统计帮助你理解自己的在港天数。',
+                      ),
+                      _SettingsDetailSection(title: '版本', body: '1.0.0'),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -118,6 +173,15 @@ class SettingsPage extends StatelessWidget {
       ],
     );
   }
+}
+
+Future<void> _pushSettingsDetail(
+  BuildContext context,
+  _SettingsDetailPage page,
+) {
+  return Navigator.of(context).push(
+    CupertinoPageRoute<void>(builder: (context) => page, title: page.title),
+  );
 }
 
 class _NativeGeofenceCard extends StatefulWidget {
@@ -187,12 +251,14 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
               label: '刷新状态',
               icon: CupertinoIcons.refresh,
               filled: false,
+              semanticHint: '刷新后台自动检测的当前状态',
               onPressed: _isBusy ? null : _refresh,
             ),
             if (!isRunning)
               AppCupertinoButton(
                 label: '启动检测',
                 icon: CupertinoIcons.play_arrow_solid,
+                semanticHint: '请求始终允许定位权限并启动后台自动检测',
                 onPressed: _isBusy ? null : _start,
               ),
             if (isRunning)
@@ -200,6 +266,7 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
                 label: '停止',
                 icon: CupertinoIcons.stop_fill,
                 filled: false,
+                semanticHint: '停止后台自动检测',
                 onPressed: _isBusy ? null : _stop,
               ),
           ],
@@ -224,8 +291,8 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
     }
 
     await _run(() async {
-      final authorizationState =
-          await widget.nativeGeofence.requestAlwaysAuthorization();
+      final authorizationState = await widget.nativeGeofence
+          .requestAlwaysAuthorization();
       if (authorizationState.status != NativeGeofenceStatus.ready) {
         return authorizationState;
       }
@@ -380,6 +447,7 @@ class _NativeEventSummary extends StatelessWidget {
               label: '生成候选记录',
               icon: CupertinoIcons.location_solid,
               filled: false,
+              semanticHint: '根据最近一次原生定位事件生成待确认记录',
               onPressed: onCreateCandidate,
             ),
           ),
@@ -441,11 +509,13 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
               label: '检查权限',
               icon: CupertinoIcons.checkmark_shield,
               filled: false,
+              semanticHint: '检查当前定位权限状态',
               onPressed: _isBusy ? null : _checkPermission,
             ),
             AppCupertinoButton(
               label: '检测当前位置',
               icon: CupertinoIcons.location_fill,
+              semanticHint: '读取当前位置并判断是否需要生成候选记录',
               onPressed: _isBusy ? null : _detectCurrentLocation,
             ),
           ],
@@ -564,43 +634,62 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoButton(
-      minimumSize: Size.zero,
-      padding: EdgeInsets.zero,
-      onPressed: onTap,
-      child: Row(
-        children: [
-          Icon(icon, color: context.appColor(iconColor ?? AppColors.ink)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: context.appColor(titleColor ?? AppColors.ink),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: context.appColor(AppColors.muted),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+    return Semantics(
+      button: onTap != null,
+      label: title,
+      hint: onTap == null ? null : subtitle,
+      child: CupertinoButton(
+        minimumSize: const Size(44, 56),
+        padding: EdgeInsets.zero,
+        onPressed: onTap == null
+            ? null
+            : () {
+                AppHaptics.selection(context);
+                onTap!();
+              },
+        child: Row(
+          children: [
+            ExcludeSemantics(
+              child: Icon(
+                icon,
+                color: context.appColor(iconColor ?? AppColors.ink),
+              ),
             ),
-          ),
-          if (onTap != null)
-            Icon(
-              CupertinoIcons.chevron_forward,
-              color: context.appColor(AppColors.muted),
-              size: 18,
+            const SizedBox(width: 12),
+            Expanded(
+              child: ExcludeSemantics(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: context.appColor(titleColor ?? AppColors.ink),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: context.appColor(AppColors.muted),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-        ],
+            if (onTap != null)
+              ExcludeSemantics(
+                child: Icon(
+                  CupertinoIcons.chevron_forward,
+                  color: context.appColor(AppColors.muted),
+                  size: 18,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -615,6 +704,67 @@ class _SettingsDivider extends StatelessWidget {
       height: 1,
       margin: const EdgeInsets.symmetric(vertical: 12),
       color: context.appColor(AppColors.border),
+    );
+  }
+}
+
+class _SettingsDetailPage extends StatelessWidget {
+  const _SettingsDetailPage({required this.title, required this.sections});
+
+  final String title;
+  final List<_SettingsDetailSection> sections;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPage(
+      title: title,
+      children: [
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var index = 0; index < sections.length; index++) ...[
+                _SettingsDetailBlock(section: sections[index]),
+                if (index != sections.length - 1) const _SettingsDivider(),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingsDetailSection {
+  const _SettingsDetailSection({required this.title, required this.body});
+
+  final String title;
+  final String body;
+}
+
+class _SettingsDetailBlock extends StatelessWidget {
+  const _SettingsDetailBlock({required this.section});
+
+  final _SettingsDetailSection section;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      header: true,
+      label: '${section.title}，${section.body}',
+      child: ExcludeSemantics(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(section.title, style: AppTextStyles.section),
+            const SizedBox(height: 8),
+            Text(
+              section.body,
+              style: TextStyle(color: context.appColor(AppColors.ink)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -636,38 +786,60 @@ class _SettingsStatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: context.appColor(AppColors.ink)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-              if (subtitle != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  subtitle!,
-                  style: TextStyle(
-                    color: context.appColor(AppColors.muted),
-                    fontSize: 13,
-                  ),
+    final stacked = context.appPrefersStackedLayout;
+    final titleBlock = ExcludeSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          if (stacked) ...[
+            const SizedBox(height: 4),
+            Text(
+              trailing,
+              style: TextStyle(
+                color: context.appColor(trailingColor),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle!,
+              style: TextStyle(
+                color: context.appColor(AppColors.muted),
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    return Semantics(
+      label: '$title，$trailing${subtitle == null ? '' : '，$subtitle'}',
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ExcludeSemantics(
+            child: Icon(icon, color: context.appColor(AppColors.ink)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: titleBlock),
+          if (!stacked) ...[
+            const SizedBox(width: 10),
+            ExcludeSemantics(
+              child: Text(
+                trailing,
+                style: TextStyle(
+                  color: context.appColor(trailingColor),
+                  fontWeight: FontWeight.w700,
                 ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          trailing,
-          style: TextStyle(
-            color: context.appColor(trailingColor),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

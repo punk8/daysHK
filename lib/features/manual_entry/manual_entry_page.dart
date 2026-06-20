@@ -44,18 +44,14 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
 
     return AppPage(
       title: '手动补录',
-      trailing: CupertinoButton(
-        minimumSize: const Size(36, 36),
-        padding: EdgeInsets.zero,
+      trailing: AppIconButton(
+        icon: CupertinoIcons.info_circle,
+        label: '补录说明',
+        hint: '查看手动补录说明',
         onPressed: () => showAppInfoDialog(
           context: context,
           title: '补录说明',
           message: '离港日期为空时，代表你目前仍在香港。统计按香港自然日估算。',
-        ),
-        child: Icon(
-          CupertinoIcons.info_circle,
-          color: context.appColor(AppColors.ink),
-          semanticLabel: '说明',
         ),
       ),
       children: [
@@ -65,9 +61,11 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  CupertinoIcons.info_circle,
-                  color: context.appColor(AppColors.teal),
+                ExcludeSemantics(
+                  child: Icon(
+                    CupertinoIcons.info_circle,
+                    color: context.appColor(AppColors.teal),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -181,9 +179,11 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                   ],
                 ),
               ),
-              Icon(
-                CupertinoIcons.calendar,
-                color: context.appColor(AppColors.teal),
+              ExcludeSemantics(
+                child: Icon(
+                  CupertinoIcons.calendar,
+                  color: context.appColor(AppColors.teal),
+                ),
               ),
             ],
           ),
@@ -196,7 +196,11 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
           ),
         ],
         const SizedBox(height: 14),
-        AppCupertinoButton(label: '保存记录', onPressed: _save),
+        AppCupertinoButton(
+          label: '保存记录',
+          semanticHint: '保存这条入离港补录记录',
+          onPressed: _save,
+        ),
       ],
     );
   }

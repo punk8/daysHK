@@ -24,6 +24,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   final _statisticsService = StayStatisticsService();
+  late final CupertinoTabController _tabController;
   var _selectedIndex = 0;
   var _records = <StayRecord>[];
   var _locationPermissionStatus = AppLocationPermissionStatus.unknown;
@@ -32,7 +33,31 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    _tabController = CupertinoTabController(initialIndex: _selectedIndex);
+    _tabController.addListener(_syncSelectedIndex);
     _reload();
+  }
+
+  @override
+  void dispose() {
+    _tabController
+      ..removeListener(_syncSelectedIndex)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _syncSelectedIndex() {
+    if (_selectedIndex == _tabController.index) {
+      return;
+    }
+    setState(() => _selectedIndex = _tabController.index);
+  }
+
+  void _selectTab(int index) {
+    if (index != _selectedIndex) {
+      AppHaptics.selection(context);
+    }
+    _tabController.index = index;
   }
 
   Future<void> _reload() async {
@@ -81,7 +106,7 @@ class _AppShellState extends State<AppShell> {
         statisticsService: _statisticsService,
         locationPermissionStatus: _locationPermissionStatus,
         today: today,
-        onManualEntry: () => setState(() => _selectedIndex = 3),
+        onManualEntry: () => _selectTab(3),
         onOpenSettings: _openSystemSettings,
       ),
       StatisticsPage(
@@ -93,6 +118,7 @@ class _AppShellState extends State<AppShell> {
         records: _records,
         onSave: _saveRecord,
         onDelete: _deleteRecord,
+        onManualEntry: () => _selectTab(3),
       ),
       ManualEntryPage(
         records: _records,
@@ -100,7 +126,7 @@ class _AppShellState extends State<AppShell> {
         today: today,
         onSave: (record) async {
           await _saveRecord(record);
-          setState(() => _selectedIndex = 2);
+          _selectTab(2);
         },
       ),
       SettingsPage(
@@ -110,7 +136,7 @@ class _AppShellState extends State<AppShell> {
         nativeGeofence: widget.dependencies.nativeGeofence,
         onSaveCandidate: _saveRecord,
         onClearAll: _clearAll,
-        onShowRecords: () => setState(() => _selectedIndex = 2),
+        onShowRecords: () => _selectTab(2),
       ),
     ];
 
@@ -121,14 +147,10 @@ class _AppShellState extends State<AppShell> {
     }
 
     return CupertinoTabScaffold(
+      controller: _tabController,
       tabBar: CupertinoTabBar(
         currentIndex: _selectedIndex,
-        onTap: (index) {
-          if (index != _selectedIndex) {
-            AppHaptics.selection(context);
-          }
-          setState(() => _selectedIndex = index);
-        },
+        onTap: _selectTab,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.house),
@@ -157,9 +179,8 @@ class _AppShellState extends State<AppShell> {
           ),
         ],
       ),
-      tabBuilder: (context, index) => CupertinoTabView(
-        builder: (context) => pages[index],
-      ),
+      tabBuilder: (context, index) =>
+          CupertinoTabView(builder: (context) => pages[index]),
     );
   }
 }

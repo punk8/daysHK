@@ -41,6 +41,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
       year: _year - 1,
       today: widget.today,
     );
+    final delta = summary.estimatedStayDays - previous.estimatedStayDays;
+    final stackedSummary = context.appPrefersStackedLayout;
 
     return AppPage(
       title: '年度统计',
@@ -75,35 +77,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
               const SizedBox(height: 6),
               const Text('估算在港天数'),
               const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${summary.estimatedStayDays}',
-                    style: TextStyle(
-                      color: context.appColor(AppColors.teal),
-                      fontSize: 54,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 11),
-                    child: Text(' 天'),
-                  ),
-                  const Spacer(),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('去年同期 ${previous.estimatedStayDays} 天'),
-                      Text(
-                        '较去年 ${summary.estimatedStayDays - previous.estimatedStayDays >= 0 ? '+' : ''}${summary.estimatedStayDays - previous.estimatedStayDays} 天',
-                        style: TextStyle(
-                          color: context.appColor(AppColors.teal),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              _AnnualSummaryMetric(
+                stayDays: summary.estimatedStayDays,
+                previousDays: previous.estimatedStayDays,
+                delta: delta,
+                stacked: stackedSummary,
               ),
               const SizedBox(height: 6),
               const Text('仅供个人记录参考'),
@@ -158,6 +136,64 @@ class _StatisticsPageState extends State<StatisticsPage> {
       years.add((record.exitDate ?? widget.today).year);
     }
     return years.toList()..sort((a, b) => b.compareTo(a));
+  }
+}
+
+class _AnnualSummaryMetric extends StatelessWidget {
+  const _AnnualSummaryMetric({
+    required this.stayDays,
+    required this.previousDays,
+    required this.delta,
+    required this.stacked,
+  });
+
+  final int stayDays;
+  final int previousDays;
+  final int delta;
+  final bool stacked;
+
+  @override
+  Widget build(BuildContext context) {
+    final metric = RichText(
+      text: TextSpan(
+        style: context.appTextStyle(AppTextStyles.body),
+        children: [
+          TextSpan(
+            text: '$stayDays',
+            style: TextStyle(
+              color: context.appColor(AppColors.teal),
+              fontSize: 54,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const TextSpan(text: ' 天'),
+        ],
+      ),
+    );
+    final comparison = Column(
+      crossAxisAlignment: stacked
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
+      children: [
+        Text('去年同期 $previousDays 天'),
+        Text(
+          '较去年 ${delta >= 0 ? '+' : ''}$delta 天',
+          style: TextStyle(color: context.appColor(AppColors.teal)),
+        ),
+      ],
+    );
+
+    if (stacked) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [metric, const SizedBox(height: 8), comparison],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [metric, const Spacer(), comparison],
+    );
   }
 }
 

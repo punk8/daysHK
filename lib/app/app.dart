@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../features/shell/app_shell.dart';
 import '../shared/theme/app_theme.dart';
@@ -15,9 +16,12 @@ class DaysInHkApp extends StatelessWidget {
       title: '在港日记',
       debugShowCheckedModeBanner: false,
       theme: buildCupertinoAppTheme(),
-      localizationsDelegates: const [
-        DefaultCupertinoLocalizations.delegate,
-        DefaultWidgetsLocalizations.delegate,
+      locale: const Locale('zh', 'Hans'),
+      localizationsDelegates: GlobalCupertinoLocalizations.delegates,
+      supportedLocales: const [
+        Locale('zh', 'Hans'),
+        Locale('zh', 'Hant'),
+        Locale('en'),
       ],
       home: AppShell(dependencies: dependencies),
     );

@@ -39,19 +39,16 @@ class DashboardPage extends StatelessWidget {
     final latest = recordsUpToToday.isEmpty ? null : recordsUpToToday.first;
     final current = _currentPresence(records);
     final longest = _longestStay(records);
+    final stackedMetrics = context.appPrefersStackedLayout;
 
     return AppPage(
       title: '在港日记',
       subtitle: '按香港自然日统计',
-      trailing: CupertinoButton(
-        minimumSize: const Size(36, 36),
-        padding: EdgeInsets.zero,
+      trailing: AppIconButton(
+        icon: CupertinoIcons.bell,
+        label: '通知',
+        hint: '打开通知设置',
         onPressed: () {},
-        child: Icon(
-          CupertinoIcons.bell,
-          color: context.appColor(AppColors.ink),
-          semanticLabel: '通知',
-        ),
       ),
       children: [
         AppCard(
@@ -86,10 +83,12 @@ class DashboardPage extends StatelessWidget {
                 child: const SizedBox(
                   width: 68,
                   height: 68,
-                  child: Icon(
-                    CupertinoIcons.building_2_fill,
-                    color: AppColors.teal,
-                    size: 34,
+                  child: ExcludeSemantics(
+                    child: Icon(
+                      CupertinoIcons.building_2_fill,
+                      color: AppColors.teal,
+                      size: 34,
+                    ),
                   ),
                 ),
               ),
@@ -98,67 +97,54 @@ class DashboardPage extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         AppCard(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
+          child: stackedMetrics
+              ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '今年估算在港天数',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                    _AnnualMetric(
+                      year: today.year,
+                      month: today.month,
+                      day: today.day,
+                      stayDays: summary.estimatedStayDays,
                     ),
-                    const SizedBox(height: 8),
-                    Text('${today.year}年（截至 ${today.month}月${today.day}日）'),
-                    const SizedBox(height: 12),
-                    RichText(
-                      text: TextSpan(
-                        style: context.appTextStyle(AppTextStyles.body),
-                        children: [
-                          TextSpan(
-                            text: '${summary.estimatedStayDays}',
-                            style: const TextStyle(
-                              color: AppColors.teal,
-                              fontSize: 52,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const TextSpan(text: ' 天'),
-                        ],
-                      ),
-                    ),
-                    const Text('仅供个人记录参考'),
-                  ],
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 130,
-                color: context.appColor(AppColors.border),
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-              SizedBox(
-                width: 116,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('当前连续在港'),
-                    const SizedBox(height: 6),
-                    _SideMetric(value: current.continuousDays, unit: '天'),
                     Container(
                       height: 1,
-                      margin: const EdgeInsets.symmetric(vertical: 14),
+                      margin: const EdgeInsets.symmetric(vertical: 16),
                       color: context.appColor(AppColors.border),
                     ),
-                    const Text('最长连续在港'),
-                    const SizedBox(height: 6),
-                    _SideMetric(value: longest, unit: '天'),
+                    _SideMetrics(
+                      currentDays: current.continuousDays,
+                      longestDays: longest,
+                      stacked: true,
+                    ),
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _AnnualMetric(
+                        year: today.year,
+                        month: today.month,
+                        day: today.day,
+                        stayDays: summary.estimatedStayDays,
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 130,
+                      color: context.appColor(AppColors.border),
+                      margin: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    SizedBox(
+                      width: 116,
+                      child: _SideMetrics(
+                        currentDays: current.continuousDays,
+                        longestDays: longest,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
         ),
         const SizedBox(height: 14),
         AppCard(
@@ -182,11 +168,13 @@ class DashboardPage extends StatelessWidget {
                           child: SizedBox(
                             width: 40,
                             height: 40,
-                            child: Icon(
-                              latest.exitDate == null
-                                  ? CupertinoIcons.arrow_down_left
-                                  : CupertinoIcons.arrow_right_arrow_left,
-                              color: CupertinoColors.white,
+                            child: ExcludeSemantics(
+                              child: Icon(
+                                latest.exitDate == null
+                                    ? CupertinoIcons.arrow_down_left
+                                    : CupertinoIcons.arrow_right_arrow_left,
+                                color: CupertinoColors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -222,9 +210,11 @@ class DashboardPage extends StatelessWidget {
             color: AppColors.warning,
             child: Row(
               children: [
-                const Icon(
-                  CupertinoIcons.location_slash,
-                  color: CupertinoColors.systemOrange,
+                const ExcludeSemantics(
+                  child: Icon(
+                    CupertinoIcons.location_slash,
+                    color: CupertinoColors.systemOrange,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -240,10 +230,11 @@ class DashboardPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                CupertinoButton(
+                AppTextButton(
+                  label: '去设置',
+                  hint: '打开 iOS 系统设置调整定位权限',
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   onPressed: onOpenSettings,
-                  child: const Text('去设置'),
                 ),
               ],
             ),
@@ -253,6 +244,7 @@ class DashboardPage extends StatelessWidget {
         AppCupertinoButton(
           label: '手动补录',
           icon: CupertinoIcons.plus_circle,
+          semanticHint: '打开手动补录页面',
           onPressed: onManualEntry,
         ),
       ],
@@ -325,6 +317,110 @@ class DashboardPage extends StatelessWidget {
       }
     }
     return longest;
+  }
+}
+
+class _AnnualMetric extends StatelessWidget {
+  const _AnnualMetric({
+    required this.year,
+    required this.month,
+    required this.day,
+    required this.stayDays,
+  });
+
+  final int year;
+  final int month;
+  final int day;
+  final int stayDays;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('今年估算在港天数', style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Text('$year年（截至 $month月$day日）'),
+        const SizedBox(height: 12),
+        RichText(
+          text: TextSpan(
+            style: context.appTextStyle(AppTextStyles.body),
+            children: [
+              TextSpan(
+                text: '$stayDays',
+                style: TextStyle(
+                  color: context.appColor(AppColors.teal),
+                  fontSize: 52,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const TextSpan(text: ' 天'),
+            ],
+          ),
+        ),
+        const Text('仅供个人记录参考'),
+      ],
+    );
+  }
+}
+
+class _SideMetrics extends StatelessWidget {
+  const _SideMetrics({
+    required this.currentDays,
+    required this.longestDays,
+    this.stacked = false,
+  });
+
+  final int currentDays;
+  final int longestDays;
+  final bool stacked;
+
+  @override
+  Widget build(BuildContext context) {
+    if (stacked) {
+      return Wrap(
+        spacing: 24,
+        runSpacing: 14,
+        children: [
+          _SideMetricBlock(label: '当前连续在港', value: currentDays),
+          _SideMetricBlock(label: '最长连续在港', value: longestDays),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SideMetricBlock(label: '当前连续在港', value: currentDays),
+        Container(
+          height: 1,
+          margin: const EdgeInsets.symmetric(vertical: 14),
+          color: context.appColor(AppColors.border),
+        ),
+        _SideMetricBlock(label: '最长连续在港', value: longestDays),
+      ],
+    );
+  }
+}
+
+class _SideMetricBlock extends StatelessWidget {
+  const _SideMetricBlock({required this.label, required this.value});
+
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '$label$value天',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label),
+          const SizedBox(height: 6),
+          _SideMetric(value: value, unit: '天'),
+        ],
+      ),
+    );
   }
 }
 

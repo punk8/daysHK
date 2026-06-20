@@ -4,6 +4,7 @@ import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_empty_state.dart';
 import '../../shared/widgets/app_notice.dart';
 import '../../shared/widgets/badges.dart';
 import '../../shared/widgets/cupertino_controls.dart';
@@ -16,38 +17,67 @@ class RecordsPage extends StatelessWidget {
     required this.records,
     required this.onSave,
     required this.onDelete,
+    required this.onManualEntry,
   });
 
   final List<StayRecord> records;
   final Future<void> Function(StayRecord record) onSave;
   final Future<void> Function(String id) onDelete;
+  final VoidCallback onManualEntry;
 
   @override
   Widget build(BuildContext context) {
-    return AppPage(
+    final timelineItems = _buildTimelineItems();
+    return AppSliverPage(
       title: '入离港记录',
-      children: [
+      slivers: [
         if (records.isEmpty)
-          const AppCard(child: Text('暂无记录。可以先去“补录”添加一条记录。'))
-        else
-          for (final group in _groupByMonth(records).entries) ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10, top: 4),
-              child: Text(
-                group.key,
-                style: AppTextStyles.section,
-              ),
+          AppSliverSection(
+            child: AppEmptyState(
+              icon: CupertinoIcons.list_bullet,
+              title: '暂无入离港记录',
+              message: '添加第一条入港或离港时间后，这里会按月份整理你的记录。',
+              actionLabel: '手动补录',
+              actionHint: '打开手动补录页面添加第一条记录',
+              onAction: onManualEntry,
             ),
-            for (final record in group.value)
-              _RecordTile(
-                record: record,
-                onSave: onSave,
-                onDelete: onDelete,
-              ),
-            const SizedBox(height: 8),
-          ],
+          )
+        else
+          AppSliverListSection(
+            itemCount: timelineItems.length,
+            itemBuilder: (context, index) {
+              final item = timelineItems[index];
+              return switch (item) {
+                _TimelineMonthHeader(:final label) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10, top: 4),
+                  child: Text(label, style: AppTextStyles.section),
+                ),
+                _TimelineRecord(:final record) => _RecordTile(
+                  record: record,
+                  onSave: onSave,
+                  onDelete: onDelete,
+                ),
+                _TimelineGap() => const SizedBox(height: 8),
+              };
+            },
+          ),
       ],
     );
+  }
+
+  List<_TimelineItem> _buildTimelineItems() {
+    if (records.isEmpty) {
+      return const [];
+    }
+    final items = <_TimelineItem>[];
+    for (final group in _groupByMonth(records).entries) {
+      items.add(_TimelineMonthHeader(group.key));
+      for (final record in group.value) {
+        items.add(_TimelineRecord(record));
+      }
+      items.add(const _TimelineGap());
+    }
+    return items;
   }
 
   Map<String, List<StayRecord>> _groupByMonth(List<StayRecord> records) {
@@ -58,6 +88,26 @@ class RecordsPage extends StatelessWidget {
     }
     return groups;
   }
+}
+
+sealed class _TimelineItem {
+  const _TimelineItem();
+}
+
+class _TimelineMonthHeader extends _TimelineItem {
+  const _TimelineMonthHeader(this.label);
+
+  final String label;
+}
+
+class _TimelineRecord extends _TimelineItem {
+  const _TimelineRecord(this.record);
+
+  final StayRecord record;
+}
+
+class _TimelineGap extends _TimelineItem {
+  const _TimelineGap();
 }
 
 class _RecordTile extends StatelessWidget {
@@ -74,6 +124,7 @@ class _RecordTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isExit = record.exitDate != null;
+    final stackedActions = context.appPrefersStackedLayout;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppCard(
@@ -92,12 +143,14 @@ class _RecordTile extends StatelessWidget {
                   child: SizedBox(
                     width: 40,
                     height: 40,
-                    child: Icon(
-                      isExit
-                          ? CupertinoIcons.arrow_up_right
-                          : CupertinoIcons.arrow_down_left,
-                      color: CupertinoColors.white,
-                      size: 18,
+                    child: ExcludeSemantics(
+                      child: Icon(
+                        isExit
+                            ? CupertinoIcons.arrow_up_right
+                            : CupertinoIcons.arrow_down_left,
+                        color: CupertinoColors.white,
+                        size: 18,
+                      ),
                     ),
                   ),
                 ),
@@ -122,17 +175,12 @@ class _RecordTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                CupertinoButton(
-                  minimumSize: const Size(36, 36),
-                  padding: EdgeInsets.zero,
-                  onPressed: () {
-                    AppHaptics.selection(context);
-                    _showRecordActions(context);
-                  },
-                  child: Icon(
-                    CupertinoIcons.ellipsis_circle,
-                    color: context.appColor(AppColors.muted),
-                  ),
+                AppIconButton(
+                  icon: CupertinoIcons.ellipsis_circle,
+                  label: '记录操作',
+                  hint: '打开编辑、确认或删除操作',
+                  color: AppColors.muted,
+                  onPressed: () => _showRecordActions(context),
                 ),
               ],
             ),
@@ -150,46 +198,27 @@ class _RecordTile extends StatelessWidget {
             if (record.confirmationStatus ==
                 ConfirmationStatus.needsConfirmation) ...[
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppCupertinoButton(
-                      label: '忽略',
-                      filled: false,
-                      onPressed: () => onSave(
-                        record.copyWith(
-                          confirmationStatus: ConfirmationStatus.rejected,
-                          updatedAt: DateTime.now(),
-                        ),
-                      ),
-                    ),
+              _ConfirmationActions(
+                stacked: stackedActions,
+                onIgnore: () => onSave(
+                  record.copyWith(
+                    confirmationStatus: ConfirmationStatus.rejected,
+                    updatedAt: DateTime.now(),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: AppCupertinoButton(
-                      label: '修正',
-                      onPressed: () => _showEditRecordDialog(
-                        context: context,
-                        record: record,
-                        onSave: onSave,
-                        confirmAfterSave: true,
-                      ),
-                    ),
+                ),
+                onEdit: () => _showEditRecordDialog(
+                  context: context,
+                  record: record,
+                  onSave: onSave,
+                  confirmAfterSave: true,
+                ),
+                onConfirm: () => onSave(
+                  record.copyWith(
+                    confirmationStatus: ConfirmationStatus.confirmed,
+                    source: RecordSource.userConfirmed,
+                    updatedAt: DateTime.now(),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: AppCupertinoButton(
-                      label: '确认',
-                      onPressed: () => onSave(
-                        record.copyWith(
-                          confirmationStatus: ConfirmationStatus.confirmed,
-                          source: RecordSource.userConfirmed,
-                          updatedAt: DateTime.now(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ],
@@ -267,6 +296,65 @@ class _RecordTile extends StatelessWidget {
   }
 }
 
+class _ConfirmationActions extends StatelessWidget {
+  const _ConfirmationActions({
+    required this.stacked,
+    required this.onIgnore,
+    required this.onEdit,
+    required this.onConfirm,
+  });
+
+  final bool stacked;
+  final VoidCallback onIgnore;
+  final VoidCallback onEdit;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    final buttons = [
+      AppCupertinoButton(
+        label: '忽略',
+        filled: false,
+        semanticHint: '忽略这条待确认记录',
+        onPressed: onIgnore,
+      ),
+      AppCupertinoButton(
+        label: '修正',
+        semanticHint: '打开编辑表单修正这条记录',
+        onPressed: onEdit,
+      ),
+      AppCupertinoButton(
+        label: '确认',
+        semanticHint: '确认这条自动检测记录',
+        onPressed: onConfirm,
+      ),
+    ];
+
+    if (stacked) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          buttons[0],
+          const SizedBox(height: 8),
+          buttons[1],
+          const SizedBox(height: 8),
+          buttons[2],
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: buttons[0]),
+        const SizedBox(width: 10),
+        Expanded(child: buttons[1]),
+        const SizedBox(width: 10),
+        Expanded(child: buttons[2]),
+      ],
+    );
+  }
+}
+
 class _LocationBadge extends StatelessWidget {
   const _LocationBadge({required this.label});
 
@@ -284,10 +372,12 @@ class _LocationBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              CupertinoIcons.placemark,
-              size: 14,
-              color: context.appColor(AppColors.teal),
+            ExcludeSemantics(
+              child: Icon(
+                CupertinoIcons.placemark,
+                size: 14,
+                color: context.appColor(AppColors.teal),
+              ),
             ),
             const SizedBox(width: 4),
             Text(
@@ -313,10 +403,8 @@ Future<void> _showEditRecordDialog({
 }) async {
   final updated = await showCupertinoModalPopup<StayRecord>(
     context: context,
-    builder: (context) => _EditRecordSheet(
-      record: record,
-      confirmAfterSave: confirmAfterSave,
-    ),
+    builder: (context) =>
+        _EditRecordSheet(record: record, confirmAfterSave: confirmAfterSave),
   );
   if (updated != null) {
     await onSave(updated);
@@ -342,12 +430,6 @@ class _EditRecordSheet extends StatefulWidget {
 class _EditRecordSheetState extends State<_EditRecordSheet> {
   late var _entryDate = widget.record.entryDate;
   late DateTime? _exitDate = widget.record.exitDate;
-  late final TextEditingController _locationController = TextEditingController(
-    text: widget.record.locationName ?? '',
-  );
-  late final TextEditingController _transportController = TextEditingController(
-    text: widget.record.transportMode ?? '',
-  );
   late final TextEditingController _noteController = TextEditingController(
     text: widget.record.note ?? '',
   );
@@ -355,8 +437,6 @@ class _EditRecordSheetState extends State<_EditRecordSheet> {
 
   @override
   void dispose() {
-    _locationController.dispose();
-    _transportController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -369,17 +449,19 @@ class _EditRecordSheetState extends State<_EditRecordSheet> {
         child: CupertinoTheme(
           data: CupertinoTheme.of(context),
           child: SizedBox(
-            height: MediaQuery.sizeOf(context).height * 0.82,
+            height: context.appPrefersStackedLayout
+                ? MediaQuery.sizeOf(context).height * 0.88
+                : MediaQuery.sizeOf(context).height * 0.68,
             child: Column(
               children: [
                 SizedBox(
                   height: 52,
                   child: Row(
                     children: [
-                      CupertinoButton(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      AppTextButton(
+                        label: '取消',
+                        hint: '关闭编辑记录表单',
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('取消'),
                       ),
                       const Expanded(
                         child: Text(
@@ -388,13 +470,11 @@ class _EditRecordSheetState extends State<_EditRecordSheet> {
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
-                      CupertinoButton(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      AppTextButton(
+                        label: '保存',
+                        hint: '保存编辑后的记录',
+                        bold: true,
                         onPressed: _save,
-                        child: const Text(
-                          '保存',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
                       ),
                     ],
                   ),
@@ -432,21 +512,11 @@ class _EditRecordSheetState extends State<_EditRecordSheet> {
                         ),
                         const SizedBox(height: 12),
                         AppCupertinoTextField(
-                          label: '口岸 / 地点',
-                          fieldKey: const Key('record-edit-location-field'),
-                          controller: _locationController,
-                        ),
-                        const SizedBox(height: 12),
-                        AppCupertinoTextField(
-                          label: '交通方式',
-                          controller: _transportController,
-                        ),
-                        const SizedBox(height: 12),
-                        AppCupertinoTextField(
                           label: '备注',
+                          fieldKey: const Key('record-edit-note-field'),
                           controller: _noteController,
                           minLines: 2,
-                          maxLines: 3,
+                          maxLines: 5,
                         ),
                         if (_error != null) ...[
                           const SizedBox(height: 10),
@@ -486,8 +556,6 @@ class _EditRecordSheetState extends State<_EditRecordSheet> {
     }
 
     final now = DateTime.now();
-    final locationName = _emptyToNull(_locationController.text);
-    final transportMode = _emptyToNull(_transportController.text);
     final note = _emptyToNull(_noteController.text);
     Navigator.pop(
       context,
@@ -497,10 +565,6 @@ class _EditRecordSheetState extends State<_EditRecordSheet> {
         clearExitDate: _exitDate == null,
         sameDayRoundTrip:
             _exitDate != null && dateKey(_entryDate) == dateKey(_exitDate!),
-        locationName: locationName,
-        clearLocationName: locationName == null,
-        transportMode: transportMode,
-        clearTransportMode: transportMode == null,
         note: note,
         clearNote: note == null,
         source: widget.confirmAfterSave
