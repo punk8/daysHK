@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 
 import '../../app/bootstrap.dart';
@@ -12,6 +14,7 @@ import '../settings/settings_page.dart';
 import '../statistics/statistics_page.dart';
 import '../../shared/widgets/app_notice.dart';
 import '../../shared/widgets/app_haptics.dart';
+import '../../widget/widget_sync_service.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.dependencies});
@@ -22,17 +25,19 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   final _statisticsService = StayStatisticsService();
   late final CupertinoTabController _tabController;
   var _selectedIndex = 0;
   var _records = <StayRecord>[];
   var _locationPermissionStatus = AppLocationPermissionStatus.unknown;
   var _isLoading = true;
+  var _contentVersion = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabController = CupertinoTabController(initialIndex: _selectedIndex);
     _tabController.addListener(_syncSelectedIndex);
     _reload();
@@ -40,10 +45,18 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabController
       ..removeListener(_syncSelectedIndex)
       ..dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _reload();
+    }
   }
 
   void _syncSelectedIndex() {
@@ -66,11 +79,22 @@ class _AppShellState extends State<AppShell> {
         .dependencies
         .locationPermission
         .checkStatus();
+    final today = hkToday();
+    final widgetSummary = _buildWidgetSummary(records, today);
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _records = records;
       _locationPermissionStatus = locationPermissionStatus;
       _isLoading = false;
+      _contentVersion += 1;
     });
+    unawaited(_syncWidgetSummary(widgetSummary));
+  }
+
+  Future<void> _syncWidgetSummary(WidgetSummary summary) {
+    return widget.dependencies.widgetSync.updateWidgetSummary(summary);
   }
 
   Future<void> _saveRecord(StayRecord record) async {
@@ -97,49 +121,24 @@ class _AppShellState extends State<AppShell> {
     await _reload();
   }
 
+  WidgetSummary _buildWidgetSummary(List<StayRecord> records, DateTime today) {
+    return WidgetSummary(
+      totalDays: _statisticsService.stayDateKeys(records, today).length,
+      currentYearDays: _statisticsService
+          .buildAnnualSummary(
+            records: records,
+            year: today.year,
+            today: today,
+          )
+          .estimatedStayDays,
+      currentYear: today.year,
+      lastUpdatedAt: DateTime.now(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final today = hkToday();
-    final pages = [
-      DashboardPage(
-        records: _records,
-        statisticsService: _statisticsService,
-        locationPermissionStatus: _locationPermissionStatus,
-        today: today,
-        onManualEntry: () => _selectTab(3),
-        onOpenSettings: _openSystemSettings,
-      ),
-      StatisticsPage(
-        records: _records,
-        statisticsService: _statisticsService,
-        today: today,
-      ),
-      RecordsPage(
-        records: _records,
-        onSave: _saveRecord,
-        onDelete: _deleteRecord,
-        onManualEntry: () => _selectTab(3),
-      ),
-      ManualEntryPage(
-        records: _records,
-        statisticsService: _statisticsService,
-        today: today,
-        onSave: (record) async {
-          await _saveRecord(record);
-          _selectTab(2);
-        },
-      ),
-      SettingsPage(
-        records: _records,
-        locationDetection: widget.dependencies.locationDetection,
-        locationPermission: widget.dependencies.locationPermission,
-        nativeGeofence: widget.dependencies.nativeGeofence,
-        onSaveCandidate: _saveRecord,
-        onClearAll: _clearAll,
-        onShowRecords: () => _selectTab(2),
-      ),
-    ];
-
     if (_isLoading) {
       return const CupertinoPageScaffold(
         child: Center(child: CupertinoActivityIndicator()),
@@ -180,7 +179,60 @@ class _AppShellState extends State<AppShell> {
         ],
       ),
       tabBuilder: (context, index) =>
-          CupertinoTabView(builder: (context) => pages[index]),
+          CupertinoTabView(
+            key: ValueKey('tab-$index-$_contentVersion'),
+            builder: (context) => _buildTabPage(index, today),
+          ),
     );
+  }
+
+  Widget _buildTabPage(int index, DateTime today) {
+    return switch (index) {
+      0 => DashboardPage(
+        records: _records,
+        statisticsService: _statisticsService,
+        locationPermissionStatus: _locationPermissionStatus,
+        today: today,
+        onManualEntry: () => _selectTab(3),
+        onOpenSettings: _openSystemSettings,
+      ),
+      1 => StatisticsPage(
+        records: _records,
+        statisticsService: _statisticsService,
+        today: today,
+      ),
+      2 => RecordsPage(
+        records: _records,
+        onSave: _saveRecord,
+        onDelete: _deleteRecord,
+        onManualEntry: () => _selectTab(3),
+      ),
+      3 => ManualEntryPage(
+        records: _records,
+        statisticsService: _statisticsService,
+        today: today,
+        onSave: (record) async {
+          await _saveRecord(record);
+          _selectTab(2);
+        },
+      ),
+      4 => SettingsPage(
+        records: _records,
+        locationDetection: widget.dependencies.locationDetection,
+        locationPermission: widget.dependencies.locationPermission,
+        nativeGeofence: widget.dependencies.nativeGeofence,
+        onSaveCandidate: _saveRecord,
+        onClearAll: _clearAll,
+        onShowRecords: () => _selectTab(2),
+      ),
+      _ => DashboardPage(
+        records: _records,
+        statisticsService: _statisticsService,
+        locationPermissionStatus: _locationPermissionStatus,
+        today: today,
+        onManualEntry: () => _selectTab(3),
+        onOpenSettings: _openSystemSettings,
+      ),
+    };
   }
 }

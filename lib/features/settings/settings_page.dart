@@ -222,7 +222,13 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
       NativeGeofenceStatus.unsupported => '不支持',
       NativeGeofenceStatus.unavailable => '不可用',
     };
-    final statusMessage = isRunning ? null : _state.message;
+    final statusMessage = switch (_state.status) {
+      NativeGeofenceStatus.unsupported ||
+      NativeGeofenceStatus.unavailable => _state.message,
+      NativeGeofenceStatus.ready ||
+      NativeGeofenceStatus.running ||
+      NativeGeofenceStatus.stopped => null,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

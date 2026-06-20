@@ -6,6 +6,7 @@ import '../location/boundary/hk_boundary_service.dart';
 import '../location/geofence/location_detection_service.dart';
 import '../location/geofence/native_geofence_bridge.dart';
 import '../location/permissions/location_permission_service.dart';
+import '../widget/widget_sync_service.dart';
 
 class AppDependencies {
   const AppDependencies({
@@ -14,6 +15,7 @@ class AppDependencies {
     required this.locationDetection,
     required this.locationPermission,
     required this.nativeGeofence,
+    required this.widgetSync,
   });
 
   final StayRecordRepository records;
@@ -21,6 +23,7 @@ class AppDependencies {
   final LocationDetectionService locationDetection;
   final LocationPermissionService locationPermission;
   final NativeGeofenceBridge nativeGeofence;
+  final WidgetSyncService widgetSync;
 }
 
 Future<AppDependencies> bootstrapDependencies() async {
@@ -34,5 +37,6 @@ Future<AppDependencies> bootstrapDependencies() async {
     locationDetection: LocationDetectionService(boundary),
     locationPermission: LocationPermissionService(),
     nativeGeofence: const NativeGeofenceBridge(),
+    widgetSync: const WidgetSyncService(),
   );
 }

@@ -1,6 +1,7 @@
 import Flutter
 import CoreLocation
 import UIKit
+import WidgetKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -14,6 +15,77 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     DaysHKGeofenceChannel.shared.configure(messenger: engineBridge.applicationRegistrar.messenger())
+    DaysHKWidgetChannel.shared.configure(messenger: engineBridge.applicationRegistrar.messenger())
+  }
+}
+
+final class DaysHKWidgetChannel {
+  static let shared = DaysHKWidgetChannel()
+
+  private let channelName = "days_in_hk/widget"
+  private let appGroupIdentifier = "group.com.punk8.daysHK"
+  private let totalDaysKey = "days_hk_total_days"
+  private let currentYearDaysKey = "days_hk_current_year_days"
+  private let currentYearKey = "days_hk_current_year"
+  private let lastUpdatedAtKey = "days_hk_last_updated_at"
+
+  private init() {}
+
+  func configure(messenger: FlutterBinaryMessenger) {
+    NSLog("DaysHK widget channel registered")
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: messenger)
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard let self else { return }
+      switch call.method {
+      case "updateWidgetSummary":
+        self.updateWidgetSummary(arguments: call.arguments, result: result)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private func updateWidgetSummary(arguments: Any?, result: FlutterResult) {
+    guard let defaults = UserDefaults(suiteName: appGroupIdentifier) else {
+      result(FlutterError(
+        code: "app_group_unavailable",
+        message: "App Group UserDefaults 不可用。",
+        details: appGroupIdentifier
+      ))
+      return
+    }
+
+    guard let payload = arguments as? [String: Any] else {
+      result(FlutterError(
+        code: "invalid_payload",
+        message: "Widget 摘要参数格式不正确。",
+        details: nil
+      ))
+      return
+    }
+
+    defaults.set(intValue(payload["totalDays"]), forKey: totalDaysKey)
+    defaults.set(intValue(payload["currentYearDays"]), forKey: currentYearDaysKey)
+    defaults.set(intValue(payload["currentYear"]), forKey: currentYearKey)
+    if let lastUpdatedAt = payload["lastUpdatedAt"] as? String {
+      defaults.set(lastUpdatedAt, forKey: lastUpdatedAtKey)
+    }
+    defaults.synchronize()
+
+    if #available(iOS 14.0, *) {
+      WidgetCenter.shared.reloadAllTimelines()
+    }
+    result(nil)
+  }
+
+  private func intValue(_ value: Any?) -> Int {
+    if let value = value as? Int {
+      return value
+    }
+    if let value = value as? NSNumber {
+      return value.intValue
+    }
+    return 0
   }
 }
 
@@ -125,7 +197,7 @@ final class DaysHKGeofenceChannel: NSObject, CLLocationManagerDelegate {
   private func stopMonitoring(_ result: FlutterResult) {
     removeExistingRegion()
     defaults.set(false, forKey: monitoringStartedKey)
-    result(statusPayload(status: "stopped", message: "iOS 后台检测已停止。"))
+    result(statusPayload(status: "stopped", message: ""))
   }
 
   private func statusPayload(status forcedStatus: String? = nil, message forcedMessage: String? = nil) -> [String: Any?] {

@@ -19,6 +19,7 @@ import 'package:days_in_hk/shared/theme/app_theme.dart';
 import 'package:days_in_hk/shared/widgets/app_haptics.dart';
 import 'package:days_in_hk/shared/widgets/app_notice.dart';
 import 'package:days_in_hk/shared/widgets/cupertino_controls.dart';
+import 'package:days_in_hk/widget/widget_sync_service.dart';
 
 class MemoryRepository implements StayRecordRepository {
   MemoryRepository(this.records);
@@ -34,7 +35,9 @@ class MemoryRepository implements StayRecordRepository {
   }
 
   @override
-  Future<List<StayRecord>> listRecords() async => records;
+  Future<List<StayRecord>> listRecords() async {
+    return [...records]..sort((a, b) => b.entryDate.compareTo(a.entryDate));
+  }
 
   @override
   Future<void> saveRecord(StayRecord record) async {
@@ -46,7 +49,7 @@ class MemoryRepository implements StayRecordRepository {
 class FakeLocationPermissionService extends LocationPermissionService {
   FakeLocationPermissionService(this.status);
 
-  final AppLocationPermissionStatus status;
+  AppLocationPermissionStatus status;
 
   @override
   Future<AppLocationPermissionStatus> checkStatus() async => status;
@@ -70,6 +73,15 @@ class FakeNativeGeofenceBridge extends NativeGeofenceBridge {
   }
 }
 
+class FakeWidgetSyncService extends WidgetSyncService {
+  final summaries = <WidgetSummary>[];
+
+  @override
+  Future<void> updateWidgetSummary(WidgetSummary summary) async {
+    summaries.add(summary);
+  }
+}
+
 void main() {
   testWidgets('App shows dashboard and manual entry tab', (tester) async {
     await tester.pumpWidget(
@@ -82,6 +94,7 @@ void main() {
             AppLocationPermissionStatus.ready,
           ),
           nativeGeofence: const NativeGeofenceBridge(),
+          widgetSync: FakeWidgetSyncService(),
         ),
       ),
     );
@@ -113,6 +126,7 @@ void main() {
             AppLocationPermissionStatus.ready,
           ),
           nativeGeofence: const NativeGeofenceBridge(),
+          widgetSync: FakeWidgetSyncService(),
         ),
       ),
     );
@@ -140,6 +154,7 @@ void main() {
             AppLocationPermissionStatus.ready,
           ),
           nativeGeofence: const NativeGeofenceBridge(),
+          widgetSync: FakeWidgetSyncService(),
         ),
       ),
     );
@@ -156,6 +171,121 @@ void main() {
 
     expect(find.text('入港日期'), findsOneWidget);
     expect(find.text('保存记录'), findsOneWidget);
+  });
+
+  testWidgets('Manual entry save updates records and dashboard metrics', (
+    tester,
+  ) async {
+    final widgetSync = FakeWidgetSyncService();
+    await tester.pumpWidget(
+      DaysInHkApp(
+        dependencies: AppDependencies(
+          records: MemoryRepository([]),
+          boundary: boundary,
+          locationDetection: LocationDetectionService(boundary),
+          locationPermission: FakeLocationPermissionService(
+            AppLocationPermissionStatus.ready,
+          ),
+          nativeGeofence: const NativeGeofenceBridge(),
+          widgetSync: widgetSync,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('补录'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('保存记录'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('记录已保存'), findsOneWidget);
+    expect(find.text('入离港记录'), findsWidgets);
+    expect(find.text('暂无入离港记录'), findsNothing);
+
+    await tester.tap(find.text('首页'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('今年估算在港天数'), findsOneWidget);
+    expect(find.text('最近记录'), findsOneWidget);
+    expect(find.text('暂无记录。可以先手动补录一次入港或离港。'), findsNothing);
+    expect(widgetSync.summaries.last.totalDays, 1);
+    expect(widgetSync.summaries.last.currentYearDays, 1);
+
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('Dashboard refreshes permission status after opening settings', (
+    tester,
+  ) async {
+    final permission = FakeLocationPermissionService(
+      AppLocationPermissionStatus.denied,
+    );
+    await tester.pumpWidget(
+      DaysInHkApp(
+        dependencies: AppDependencies(
+          records: MemoryRepository([]),
+          boundary: boundary,
+          locationDetection: LocationDetectionService(boundary),
+          locationPermission: permission,
+          nativeGeofence: const NativeGeofenceBridge(),
+          widgetSync: FakeWidgetSyncService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('定位权限：未授权'), findsOneWidget);
+
+    permission.status = AppLocationPermissionStatus.ready;
+    await tester.tap(find.text('去设置'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('定位权限：未授权'), findsNothing);
+    expect(find.text('定位权限：正常'), findsNothing);
+  });
+
+  testWidgets('App syncs stay summary to iOS widget bridge after loading', (
+    tester,
+  ) async {
+    final widgetSync = FakeWidgetSyncService();
+    final now = DateTime.now();
+    final records = [
+      StayRecord(
+        id: 'record-1',
+        entryDate: DateTime(now.year - 1, 12, 31),
+        exitDate: DateTime(now.year, 1, 2),
+        sameDayRoundTrip: false,
+        source: RecordSource.manual,
+        confirmationStatus: ConfirmationStatus.confirmed,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    ];
+
+    await tester.pumpWidget(
+      DaysInHkApp(
+        dependencies: AppDependencies(
+          records: MemoryRepository(records),
+          boundary: boundary,
+          locationDetection: LocationDetectionService(boundary),
+          locationPermission: FakeLocationPermissionService(
+            AppLocationPermissionStatus.ready,
+          ),
+          nativeGeofence: const NativeGeofenceBridge(),
+          widgetSync: widgetSync,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(widgetSync.summaries, isNotEmpty);
+    final summary = widgetSync.summaries.last;
+    expect(summary.totalDays, 3);
+    expect(summary.currentYear, now.year);
+    expect(summary.currentYearDays, 2);
   });
 
   testWidgets('Dashboard settings prompt calls settings action', (
@@ -547,6 +677,31 @@ void main() {
     final statusTop = tester.getTopLeft(find.text('受限')).dy;
     expect(titleBottom, lessThanOrEqualTo(statusTop));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Settings hides native geofence technical success messages', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _TestHost(
+        child: SettingsPage(
+          records: const [],
+          locationDetection: LocationDetectionService(boundary),
+          locationPermission: FakeLocationPermissionService(
+            AppLocationPermissionStatus.ready,
+          ),
+          nativeGeofence: const FakeNativeGeofenceBridge(),
+          onSaveCandidate: (_) async {},
+          onClearAll: () async {},
+          onShowRecords: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('后台自动检测'), findsOneWidget);
+    expect(find.text('已准备'), findsOneWidget);
+    expect(find.text('测试状态'), findsNothing);
   });
 
   testWidgets('Settings info tiles open Cupertino detail pages', (
