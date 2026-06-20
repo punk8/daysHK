@@ -2,7 +2,7 @@
 
 ## 职责
 
-负责五个主功能页的 iOS 壳层和底部导航。
+负责五个主功能页的跨平台壳层和底部导航。
 
 当前 Tab：
 
@@ -45,7 +45,9 @@ class AppShell:
       ManualEntryPage(records, saveRecord),
       SettingsPage(records, clearAll)
     ]
-    return CupertinoTabScaffold(tabBar = tabs, tabBuilder = pages[index])
+    if platform is iOS/macOS:
+      return CupertinoTabScaffold(tabBar = tabs, tabBuilder = pages[index])
+    return Scaffold(body = IndexedStack(pages), bottomNavigationBar = tabs)
 ```
 
 ## 注意事项
@@ -53,4 +55,6 @@ class AppShell:
 - 这里可以做轻量页面编排，不放复杂业务算法。
 - 如果后续状态变复杂，可以再引入 Provider / Riverpod 等状态管理。
 - Tab 文案和顺序应保持与 UI 示意图一致，除非产品讨论明确调整。
-- 壳层优先使用 Cupertino 组件，保证 iOS tab、页面滚动和导航标题更接近系统应用。
+- iOS / macOS 使用 Cupertino tab、页面滚动和导航标题。
+- Android / Windows / Linux / Web 使用 Material bottom navigation 和页面路由。
+- 底部导航图标通过 `AppPlatformIcon` 映射，确保 iOS 使用 Cupertino 图标，Material 平台使用 Material Icons。

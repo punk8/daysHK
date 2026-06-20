@@ -7,11 +7,8 @@ Android 端应用包代码。这里是 Flutter 与 Android 系统定位能力之
 ## 当前文件
 
 - `MainActivity.kt`：注册 `days_in_hk/geofence` MethodChannel，返回原生后台检测状态。
-
-## 后续建议文件
-
-- `GeofenceBroadcastReceiver.kt`
-- `NativeGeofenceStore.kt`
+- `GeofenceBroadcastReceiver.kt`：接收 Android Geofencing API 的 enter / exit 广播。
+- `NativeGeofenceStore.kt`：保存后台检测开关状态和最近一次原生事件。
 - `PermissionStatusMapper.kt`
 
 ## 事件载荷伪代码
@@ -36,4 +33,3 @@ statusPayload():
 ## 注意事项
 
 Android 原生事件只能说明系统检测到进入或离开某个唤醒区域，最终是否生成在港记录仍由 Dart 的边界判断和用户确认流程决定。
-

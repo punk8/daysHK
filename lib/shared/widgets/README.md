@@ -15,16 +15,18 @@
 - `PrimaryActionButton`
 - `EmptyState`
 - `AppNotice`
-- `CupertinoControls`
+- `CupertinoControls` / adaptive controls
 
 ## 已实现
 
 - `AppEmptyState`：用于空列表，包含图标、标题、描述和主动作。
-- `AppNotice`：用于轻量状态反馈，避免 Android 风格 Snackbar。
-- `AppCupertinoButton` / `AppIconButton`：统一 iOS 触控尺寸、圆角、haptic 和 VoiceOver 语义。
+- `AppNotice`：iOS / macOS 使用顶部轻提示，Material 平台使用 `SnackBar`。
+- `AppButton` / `AppIconButton`：按平台切换 Cupertino / Material 控件；旧的 `AppCupertinoButton` 仅保留为兼容壳。
+- `AppAdaptiveSwitch` / `AppSegmentedControl`：用于需要原生开关和分段选择体验的场景。
 
 ## 原则
 
 - 组件应服务当前 UI 示意图，不要一开始做过度通用的设计系统。
 - 文案应从调用方传入，避免组件里硬编码业务结论。
-- iOS 主流程优先使用 Cupertino 弹窗、滚轮日期选择、tab 和页面脚手架。
+- iOS / macOS 主流程优先使用 Cupertino 弹窗、滚轮日期选择、tab 和页面脚手架。
+- Android / Windows / Linux / Web 主流程优先使用 Material 3 对话框、日期选择、底部导航和页面路由。

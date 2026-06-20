@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../domain/models/stay_record.dart';
 import '../theme/app_theme.dart';
@@ -12,9 +12,7 @@ class SourceBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Badge(
       label: source.label,
-      color: source == RecordSource.manual
-          ? CupertinoColors.systemGrey
-          : AppColors.teal,
+      color: source == RecordSource.manual ? AppColors.muted : AppColors.teal,
     );
   }
 }
@@ -28,7 +26,7 @@ class ConfirmationBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = switch (status) {
       ConfirmationStatus.confirmed => AppColors.teal,
-      ConfirmationStatus.needsConfirmation => CupertinoColors.systemOrange,
+      ConfirmationStatus.needsConfirmation => AppColors.warningText,
       ConfirmationStatus.rejected => AppColors.muted,
     };
     return _Badge(label: status.label, color: color);

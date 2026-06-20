@@ -27,6 +27,9 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
             when (call.method) {
                 "getStatus" -> result.success(statusPayload())
+                "requestAlwaysAuthorization" -> {
+                    requestAlwaysAuthorization(result)
+                }
                 "startMonitoring" -> {
                     startMonitoring(result)
                 }
@@ -36,6 +39,25 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun requestAlwaysAuthorization(result: MethodChannel.Result) {
+        if (!isLocationEnabled()) {
+            result.success(statusPayload("unavailable", "Android 定位服务未开启。"))
+            return
+        }
+
+        if (hasRequiredLocationPermission()) {
+            result.success(statusPayload("ready", "已获得前台和后台定位权限，可启动后台检测。"))
+            return
+        }
+
+        result.success(
+            statusPayload(
+                "unavailable",
+                "请在系统设置中允许精确定位和后台定位，然后再次启动后台检测。"
+            )
+        )
     }
 
     @SuppressLint("MissingPermission")

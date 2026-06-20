@@ -59,6 +59,25 @@
 - `flutter build apk --debug`：通过，产物输出到 `build/app/outputs/flutter-apk/app-debug.apk`。
 - `flutter build ios --no-codesign`：通过，产物输出到 `build/ios/iphoneos/Runner.app`。
 
+## iOS 26 Simulator 预览
+
+可使用 `tools/qa/ios_preview.sh` 走 Build iOS Apps 插件的模拟器预览流程：
+
+```bash
+tools/qa/ios_preview.sh --device D16207F5-F789-42F4-961C-C37FF443E562 --port 3100
+```
+
+该脚本会：
+
+- 使用 `/Applications/Xcode-beta.app/Contents/Developer`。
+- 启动或复用 iOS 26 Simulator。
+- 通过 `flutter run -d <udid> --debug` 部署应用。
+- 通过 `serve-sim` 在浏览器中暴露模拟器画面。
+
+本机已验证可用的模拟器：
+
+- iPhone 17 Pro / iOS 26.5：`D16207F5-F789-42F4-961C-C37FF443E562`
+
 本轮补齐的原生构建环境：
 
 - 已通过 Homebrew 安装 Android command-line tools：`android-commandlinetools`。

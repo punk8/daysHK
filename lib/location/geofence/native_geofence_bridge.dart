@@ -117,7 +117,7 @@ class NativeGeofenceBridge {
     if (kIsWeb) {
       return const NativeGeofenceState(
         status: NativeGeofenceStatus.unsupported,
-        message: 'Web 环境不支持原生后台检测，请在 iOS 设备或模拟器上验收业务流程。',
+        message: 'Web 环境不支持原生后台检测，请在 iOS 或 Android 设备上验收业务流程。',
       );
     }
 

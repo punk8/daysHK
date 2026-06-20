@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/platform_style.dart';
 
 class AppPage extends StatelessWidget {
   const AppPage({
@@ -18,12 +20,47 @@ class AppPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (AppPlatformStyle.isMaterial(context)) {
+      return Scaffold(
+        backgroundColor: context.appColor(AppColors.background),
+        appBar: AppBar(title: Text(title), actions: _materialActions(trailing)),
+        body: CustomScrollView(
+          physics: AppPlatformStyle.scrollPhysics(context),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (subtitle != null) ...[
+                          Text(
+                            subtitle!,
+                            style: TextStyle(
+                              color: context.appColor(AppColors.muted),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        ...children,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return CupertinoPageScaffold(
       backgroundColor: context.appColor(AppColors.background),
       child: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
+        physics: AppPlatformStyle.scrollPhysics(context),
         slivers: [
           CupertinoSliverNavigationBar(
             largeTitle: Text(title),
@@ -80,12 +117,38 @@ class AppSliverPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (AppPlatformStyle.isMaterial(context)) {
+      return Scaffold(
+        backgroundColor: context.appColor(AppColors.background),
+        appBar: AppBar(title: Text(title), actions: _materialActions(trailing)),
+        body: CustomScrollView(
+          physics: AppPlatformStyle.scrollPhysics(context),
+          slivers: [
+            if (subtitle != null)
+              SliverToBoxAdapter(
+                child: _PageWidth(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                    child: Text(
+                      subtitle!,
+                      style: TextStyle(
+                        color: context.appColor(AppColors.muted),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ...slivers,
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
+        ),
+      );
+    }
+
     return CupertinoPageScaffold(
       backgroundColor: context.appColor(AppColors.background),
       child: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
+        physics: AppPlatformStyle.scrollPhysics(context),
         slivers: [
           CupertinoSliverNavigationBar(
             largeTitle: Text(title),
@@ -113,6 +176,13 @@ class AppSliverPage extends StatelessWidget {
       ),
     );
   }
+}
+
+List<Widget>? _materialActions(Widget? trailing) {
+  if (trailing == null) {
+    return null;
+  }
+  return [trailing, const SizedBox(width: 8)];
 }
 
 class AppSliverSection extends StatelessWidget {

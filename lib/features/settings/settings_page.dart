@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
@@ -12,6 +13,8 @@ import '../../shared/widgets/app_haptics.dart';
 import '../../shared/widgets/app_notice.dart';
 import '../../shared/widgets/cupertino_controls.dart';
 import '../../shared/widgets/page_scaffold.dart';
+import '../../shared/theme/platform_icons.dart';
+import '../../shared/theme/platform_style.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -57,8 +60,8 @@ class SettingsPage extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         AppCard(
-          child: const _SettingsTile(
-            icon: CupertinoIcons.archivebox,
+          child: _SettingsTile(
+            icon: AppPlatformIcon.storage(context),
             title: '数据存储',
             subtitle: '所有数据仅保存在本地设备中，不会上传或分享你的数据。',
           ),
@@ -68,7 +71,7 @@ class SettingsPage extends StatelessWidget {
           child: Column(
             children: [
               _SettingsTile(
-                icon: CupertinoIcons.delete,
+                icon: AppPlatformIcon.delete(context),
                 iconColor: AppColors.red,
                 title: '清除所有数据',
                 titleColor: AppColors.red,
@@ -97,7 +100,7 @@ class SettingsPage extends StatelessWidget {
           child: Column(
             children: [
               _SettingsTile(
-                icon: CupertinoIcons.hand_raised,
+                icon: AppPlatformIcon.privacy(context),
                 title: '隐私说明',
                 subtitle: '本应用用于个人记录参考，不构成永居资格判断。',
                 onTap: () => _pushSettingsDetail(
@@ -111,8 +114,7 @@ class SettingsPage extends StatelessWidget {
                       ),
                       _SettingsDetailSection(
                         title: '定位用途',
-                        body:
-                            '定位仅用于判断是否需要生成待确认的入离港候选记录。后台自动检测需要 iOS 的“始终允许”定位权限。',
+                        body: '定位仅用于判断是否需要生成待确认的入离港候选记录。后台自动检测需要系统后台定位权限。',
                       ),
                       _SettingsDetailSection(
                         title: '个人参考',
@@ -124,7 +126,7 @@ class SettingsPage extends StatelessWidget {
               ),
               const _SettingsDivider(),
               _SettingsTile(
-                icon: CupertinoIcons.doc_text,
+                icon: AppPlatformIcon.document(context),
                 title: '使用条款',
                 subtitle: '统计结果基于你的记录估算，可能存在误差。',
                 onTap: () => _pushSettingsDetail(
@@ -150,7 +152,7 @@ class SettingsPage extends StatelessWidget {
               ),
               const _SettingsDivider(),
               _SettingsTile(
-                icon: CupertinoIcons.info_circle,
+                icon: AppPlatformIcon.info(context),
                 title: '关于在港日记',
                 subtitle: '版本 1.0.0',
                 onTap: () => _pushSettingsDetail(
@@ -179,9 +181,10 @@ Future<void> _pushSettingsDetail(
   BuildContext context,
   _SettingsDetailPage page,
 ) {
-  return Navigator.of(context).push(
-    CupertinoPageRoute<void>(builder: (context) => page, title: page.title),
-  );
+  final route = AppPlatformStyle.isMaterial(context)
+      ? MaterialPageRoute<void>(builder: (context) => page)
+      : CupertinoPageRoute<void>(builder: (context) => page, title: page.title);
+  return Navigator.of(context).push(route);
 }
 
 class _NativeGeofenceCard extends StatefulWidget {
@@ -233,7 +236,7 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SettingsStatusRow(
-          icon: CupertinoIcons.location_circle,
+          icon: AppPlatformIcon.place(context),
           title: '后台自动检测',
           subtitle: statusMessage,
           trailing: statusLabel,
@@ -253,24 +256,24 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            AppCupertinoButton(
+            AppButton(
               label: '刷新状态',
-              icon: CupertinoIcons.refresh,
+              icon: AppPlatformIcon.refresh(context),
               filled: false,
               semanticHint: '刷新后台自动检测的当前状态',
               onPressed: _isBusy ? null : _refresh,
             ),
             if (!isRunning)
-              AppCupertinoButton(
+              AppButton(
                 label: '启动检测',
-                icon: CupertinoIcons.play_arrow_solid,
-                semanticHint: '请求始终允许定位权限并启动后台自动检测',
+                icon: AppPlatformIcon.play(context),
+                semanticHint: '请求后台定位权限并启动后台自动检测',
                 onPressed: _isBusy ? null : _start,
               ),
             if (isRunning)
-              AppCupertinoButton(
+              AppButton(
                 label: '停止',
-                icon: CupertinoIcons.stop_fill,
+                icon: AppPlatformIcon.stop(context),
                 filled: false,
                 semanticHint: '停止后台自动检测',
                 onPressed: _isBusy ? null : _stop,
@@ -289,7 +292,7 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
     final confirmed = await showAppConfirmationDialog(
       context: context,
       title: '开启后台自动检测',
-      message: '后台自动检测需要“始终允许”定位权限。系统可能会先询问定位授权；授权后请再次点击启动检测完成开启。',
+      message: '后台自动检测需要系统后台定位权限。系统可能会先询问定位授权；授权后请再次点击启动检测完成开启。',
       confirmLabel: '继续',
     );
     if (!confirmed) {
@@ -449,9 +452,9 @@ class _NativeEventSummary extends StatelessWidget {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
-            child: AppCupertinoButton(
+            child: AppButton(
               label: '生成候选记录',
-              icon: CupertinoIcons.location_solid,
+              icon: AppPlatformIcon.place(context, filled: true),
               filled: false,
               semanticHint: '根据最近一次原生定位事件生成待确认记录',
               onPressed: onCreateCandidate,
@@ -483,7 +486,7 @@ class _LocationDetectionCard extends StatefulWidget {
 }
 
 class _LocationDetectionCardState extends State<_LocationDetectionCard> {
-  String _status = '建议开启“始终允许”，以获得更准确的出入境记录。';
+  String _status = '建议开启后台定位权限，以获得更准确的出入境记录。';
   AppLocationPermissionStatus _permissionStatus =
       AppLocationPermissionStatus.unknown;
   bool _isBusy = false;
@@ -500,7 +503,7 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SettingsStatusRow(
-          icon: CupertinoIcons.location,
+          icon: AppPlatformIcon.place(context),
           title: '定位权限状态',
           subtitle: _status,
           trailing: _permissionLabel,
@@ -511,16 +514,16 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            AppCupertinoButton(
+            AppButton(
               label: '检查权限',
-              icon: CupertinoIcons.checkmark_shield,
+              icon: AppPlatformIcon.shield(context),
               filled: false,
               semanticHint: '检查当前定位权限状态',
               onPressed: _isBusy ? null : _checkPermission,
             ),
-            AppCupertinoButton(
+            AppButton(
               label: '检测当前位置',
-              icon: CupertinoIcons.location_fill,
+              icon: AppPlatformIcon.place(context, filled: true),
               semanticHint: '读取当前位置并判断是否需要生成候选记录',
               onPressed: _isBusy ? null : _detectCurrentLocation,
             ),
@@ -591,7 +594,7 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
       AppLocationPermissionStatus.ready => AppColors.teal,
       AppLocationPermissionStatus.whileInUseOnly ||
       AppLocationPermissionStatus.serviceDisabled ||
-      AppLocationPermissionStatus.unknown => CupertinoColors.systemOrange,
+      AppLocationPermissionStatus.unknown => AppColors.warningText,
       AppLocationPermissionStatus.denied ||
       AppLocationPermissionStatus.deniedForever => AppColors.red,
     };
@@ -640,63 +643,75 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final handleTap = onTap == null
+        ? null
+        : () {
+            AppHaptics.selection(context);
+            onTap!();
+          };
+    final row = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 56),
+      child: Row(
+        children: [
+          ExcludeSemantics(
+            child: Icon(
+              icon,
+              color: context.appColor(iconColor ?? AppColors.ink),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ExcludeSemantics(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: context.appColor(titleColor ?? AppColors.ink),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: context.appColor(AppColors.muted),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (onTap != null)
+            ExcludeSemantics(
+              child: Icon(
+                AppPlatformIcon.chevronForward(context),
+                color: context.appColor(AppColors.muted),
+                size: 18,
+              ),
+            ),
+        ],
+      ),
+    );
+
     return Semantics(
       button: onTap != null,
       label: title,
       hint: onTap == null ? null : subtitle,
-      child: CupertinoButton(
-        minimumSize: const Size(44, 56),
-        padding: EdgeInsets.zero,
-        onPressed: onTap == null
-            ? null
-            : () {
-                AppHaptics.selection(context);
-                onTap!();
-              },
-        child: Row(
-          children: [
-            ExcludeSemantics(
-              child: Icon(
-                icon,
-                color: context.appColor(iconColor ?? AppColors.ink),
-              ),
+      child: AppPlatformStyle.isMaterial(context)
+          ? InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: handleTap,
+              child: row,
+            )
+          : CupertinoButton(
+              minimumSize: const Size(44, 56),
+              padding: EdgeInsets.zero,
+              onPressed: handleTap,
+              child: row,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ExcludeSemantics(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: context.appColor(titleColor ?? AppColors.ink),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: context.appColor(AppColors.muted),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (onTap != null)
-              ExcludeSemantics(
-                child: Icon(
-                  CupertinoIcons.chevron_forward,
-                  color: context.appColor(AppColors.muted),
-                  size: 18,
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -3,12 +3,13 @@ import 'package:flutter/cupertino.dart';
 import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/theme/platform_icons.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_empty_state.dart';
 import '../../shared/widgets/app_notice.dart';
 import '../../shared/widgets/badges.dart';
 import '../../shared/widgets/cupertino_controls.dart';
-import '../../shared/widgets/app_haptics.dart';
+import '../../shared/theme/platform_style.dart';
 import '../../shared/widgets/page_scaffold.dart';
 
 class RecordsPage extends StatelessWidget {
@@ -34,7 +35,7 @@ class RecordsPage extends StatelessWidget {
         if (records.isEmpty)
           AppSliverSection(
             child: AppEmptyState(
-              icon: CupertinoIcons.list_bullet,
+              icon: AppPlatformIcon.records(context),
               title: '暂无入离港记录',
               message: '添加第一条入港或离港时间后，这里会按月份整理你的记录。',
               actionLabel: '手动补录',
@@ -146,9 +147,9 @@ class _RecordTile extends StatelessWidget {
                     child: ExcludeSemantics(
                       child: Icon(
                         isExit
-                            ? CupertinoIcons.arrow_up_right
-                            : CupertinoIcons.arrow_down_left,
-                        color: CupertinoColors.white,
+                            ? AppPlatformIcon.exit(context)
+                            : AppPlatformIcon.entry(context),
+                        color: const Color(0xFFFFFFFF),
                         size: 18,
                       ),
                     ),
@@ -176,7 +177,7 @@ class _RecordTile extends StatelessWidget {
                   ),
                 ),
                 AppIconButton(
-                  icon: CupertinoIcons.ellipsis_circle,
+                  icon: AppPlatformIcon.more(context),
                   label: '记录操作',
                   hint: '打开编辑、确认或删除操作',
                   color: AppColors.muted,
@@ -228,40 +229,19 @@ class _RecordTile extends StatelessWidget {
   }
 
   Future<void> _showRecordActions(BuildContext context) async {
-    final value = await showCupertinoModalPopup<String>(
+    final value = await showAppActionSheet<String>(
       context: context,
-      builder: (context) => CupertinoActionSheet(
-        title: const Text('记录操作'),
-        actions: [
-          if (record.confirmationStatus == ConfirmationStatus.needsConfirmation)
-            CupertinoActionSheetAction(
-              onPressed: () {
-                AppHaptics.selection(context);
-                Navigator.pop(context, 'confirm');
-              },
-              child: const Text('确认记录'),
-            ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              AppHaptics.selection(context);
-              Navigator.pop(context, 'edit');
-            },
-            child: const Text('编辑 / 修正'),
-          ),
-          CupertinoActionSheetAction(
-            isDestructiveAction: true,
-            onPressed: () {
-              AppHaptics.selection(context);
-              Navigator.pop(context, 'delete');
-            },
-            child: const Text('删除'),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+      title: '记录操作',
+      actions: [
+        if (record.confirmationStatus == ConfirmationStatus.needsConfirmation)
+          const AppActionSheetItem(value: 'confirm', label: '确认记录'),
+        const AppActionSheetItem(value: 'edit', label: '编辑 / 修正'),
+        const AppActionSheetItem(
+          value: 'delete',
+          label: '删除',
+          destructive: true,
         ),
-      ),
+      ],
     );
 
     if (!context.mounted || value == null) {
@@ -312,22 +292,14 @@ class _ConfirmationActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final buttons = [
-      AppCupertinoButton(
+      AppButton(
         label: '忽略',
         filled: false,
         semanticHint: '忽略这条待确认记录',
         onPressed: onIgnore,
       ),
-      AppCupertinoButton(
-        label: '修正',
-        semanticHint: '打开编辑表单修正这条记录',
-        onPressed: onEdit,
-      ),
-      AppCupertinoButton(
-        label: '确认',
-        semanticHint: '确认这条自动检测记录',
-        onPressed: onConfirm,
-      ),
+      AppButton(label: '修正', semanticHint: '打开编辑表单修正这条记录', onPressed: onEdit),
+      AppButton(label: '确认', semanticHint: '确认这条自动检测记录', onPressed: onConfirm),
     ];
 
     if (stacked) {
@@ -374,7 +346,7 @@ class _LocationBadge extends StatelessWidget {
           children: [
             ExcludeSemantics(
               child: Icon(
-                CupertinoIcons.placemark,
+                AppPlatformIcon.place(context),
                 size: 14,
                 color: context.appColor(AppColors.teal),
               ),
@@ -401,7 +373,7 @@ Future<void> _showEditRecordDialog({
   required Future<void> Function(StayRecord record) onSave,
   bool confirmAfterSave = false,
 }) async {
-  final updated = await showCupertinoModalPopup<StayRecord>(
+  final updated = await showAppModalSheet<StayRecord>(
     context: context,
     builder: (context) =>
         _EditRecordSheet(record: record, confirmAfterSave: confirmAfterSave),
@@ -443,100 +415,103 @@ class _EditRecordSheetState extends State<_EditRecordSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPopupSurface(
-      child: SafeArea(
-        top: false,
-        child: CupertinoTheme(
-          data: CupertinoTheme.of(context),
-          child: SizedBox(
-            height: context.appPrefersStackedLayout
-                ? MediaQuery.sizeOf(context).height * 0.88
-                : MediaQuery.sizeOf(context).height * 0.68,
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 52,
-                  child: Row(
-                    children: [
-                      AppTextButton(
-                        label: '取消',
-                        hint: '关闭编辑记录表单',
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      const Expanded(
-                        child: Text(
-                          '编辑记录',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      AppTextButton(
-                        label: '保存',
-                        hint: '保存编辑后的记录',
-                        bold: true,
-                        onPressed: _save,
-                      ),
-                    ],
+    final sheetHeight = context.appPrefersStackedLayout
+        ? MediaQuery.sizeOf(context).height * 0.88
+        : MediaQuery.sizeOf(context).height * 0.68;
+    final sheet = SafeArea(
+      top: false,
+      child: SizedBox(
+        height: sheetHeight,
+        child: Column(
+          children: [
+            SizedBox(
+              height: 52,
+              child: Row(
+                children: [
+                  AppTextButton(
+                    label: '取消',
+                    hint: '关闭编辑记录表单',
+                    onPressed: () => Navigator.pop(context),
                   ),
-                ),
-                Container(height: 1, color: context.appColor(AppColors.border)),
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        AppCupertinoDateField(
-                          label: '入港日期',
-                          date: _entryDate,
-                          onTap: () async {
-                            final picked = await _pickDate(_entryDate);
-                            if (picked != null) {
-                              setState(() => _entryDate = picked);
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        AppCupertinoDateField(
-                          label: '离港日期（可选）',
-                          date: _exitDate,
-                          onTap: () async {
-                            final picked = await _pickDate(
-                              _exitDate ?? _entryDate,
-                            );
-                            if (picked != null) {
-                              setState(() => _exitDate = picked);
-                            }
-                          },
-                          onClear: () => setState(() => _exitDate = null),
-                        ),
-                        const SizedBox(height: 12),
-                        AppCupertinoTextField(
-                          label: '备注',
-                          fieldKey: const Key('record-edit-note-field'),
-                          controller: _noteController,
-                          minLines: 2,
-                          maxLines: 5,
-                        ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            _error!,
-                            style: TextStyle(
-                              color: context.appColor(AppColors.red),
-                            ),
-                          ),
-                        ],
-                      ],
+                  const Expanded(
+                    child: Text(
+                      '编辑记录',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
-                ),
-              ],
+                  AppTextButton(
+                    label: '保存',
+                    hint: '保存编辑后的记录',
+                    bold: true,
+                    onPressed: _save,
+                  ),
+                ],
+              ),
             ),
-          ),
+            Container(height: 1, color: context.appColor(AppColors.border)),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: AppPlatformStyle.scrollPhysics(context),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    AppCupertinoDateField(
+                      label: '入港日期',
+                      date: _entryDate,
+                      onTap: () async {
+                        final picked = await _pickDate(_entryDate);
+                        if (picked != null) {
+                          setState(() => _entryDate = picked);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    AppCupertinoDateField(
+                      label: '离港日期（可选）',
+                      date: _exitDate,
+                      onTap: () async {
+                        final picked = await _pickDate(_exitDate ?? _entryDate);
+                        if (picked != null) {
+                          setState(() => _exitDate = picked);
+                        }
+                      },
+                      onClear: () => setState(() => _exitDate = null),
+                    ),
+                    const SizedBox(height: 12),
+                    AppCupertinoTextField(
+                      label: '备注',
+                      fieldKey: const Key('record-edit-note-field'),
+                      controller: _noteController,
+                      minLines: 2,
+                      maxLines: 5,
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        _error!,
+                        style: TextStyle(
+                          color: context.appColor(AppColors.red),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
+
+    return AppPlatformStyle.isMaterial(context)
+        ? sheet
+        : CupertinoPopupSurface(
+            child: CupertinoTheme(
+              data: CupertinoTheme.of(context),
+              child: sheet,
+            ),
+          );
   }
 
   Future<DateTime?> _pickDate(DateTime initial) {

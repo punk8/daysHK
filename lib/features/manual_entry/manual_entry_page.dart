@@ -4,10 +4,10 @@ import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
 import '../../domain/services/stay_statistics_service.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/theme/platform_icons.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_notice.dart';
 import '../../shared/widgets/cupertino_controls.dart';
-import '../../shared/widgets/app_haptics.dart';
 import '../../shared/widgets/page_scaffold.dart';
 
 class ManualEntryPage extends StatefulWidget {
@@ -45,7 +45,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
     return AppPage(
       title: '手动补录',
       trailing: AppIconButton(
-        icon: CupertinoIcons.info_circle,
+        icon: AppPlatformIcon.info(context),
         label: '补录说明',
         hint: '查看手动补录说明',
         onPressed: () => showAppInfoDialog(
@@ -63,7 +63,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
               children: [
                 ExcludeSemantics(
                   child: Icon(
-                    CupertinoIcons.info_circle,
+                    AppPlatformIcon.info(context),
                     color: context.appColor(AppColors.teal),
                   ),
                 ),
@@ -132,11 +132,9 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                   ],
                 ),
               ),
-              CupertinoSwitch(
+              AppAdaptiveSwitch(
                 value: _sameDayRoundTrip,
-                activeTrackColor: AppColors.teal,
                 onChanged: (value) {
-                  AppHaptics.selection(context);
                   setState(() {
                     _sameDayRoundTrip = value;
                     if (_sameDayRoundTrip) {
@@ -181,7 +179,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
               ),
               ExcludeSemantics(
                 child: Icon(
-                  CupertinoIcons.calendar,
+                  AppPlatformIcon.calendar(context),
                   color: context.appColor(AppColors.teal),
                 ),
               ),
@@ -196,8 +194,9 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
           ),
         ],
         const SizedBox(height: 14),
-        AppCupertinoButton(
+        AppButton(
           label: '保存记录',
+          fullWidth: true,
           semanticHint: '保存这条入离港补录记录',
           onPressed: _save,
         ),

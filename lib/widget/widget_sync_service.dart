@@ -37,10 +37,7 @@ class WidgetSyncService {
     }
 
     try {
-      await _channel.invokeMethod<void>(
-        'updateWidgetSummary',
-        summary.toMap(),
-      );
+      await _channel.invokeMethod<void>('updateWidgetSummary', summary.toMap());
     } on MissingPluginException {
       debugPrint('DaysHK widget channel is not registered.');
     } on PlatformException catch (error) {

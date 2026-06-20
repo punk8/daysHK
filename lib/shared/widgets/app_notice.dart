@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/platform_icons.dart';
+import '../theme/platform_style.dart';
 import 'app_haptics.dart';
 import 'cupertino_controls.dart';
 
@@ -20,6 +23,28 @@ class AppNotice {
     String message, {
     AppNoticeAction? action,
   }) {
+    if (AppPlatformStyle.isMaterial(context)) {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      if (messenger == null) {
+        return;
+      }
+      AppHaptics.lightImpact(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(message),
+            action: action == null
+                ? null
+                : SnackBarAction(
+                    label: action.label,
+                    onPressed: action.onPressed,
+                  ),
+          ),
+        );
+      return;
+    }
+
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) {
       return;
@@ -112,7 +137,7 @@ class _AppNoticeOverlay extends StatelessWidget {
                           children: [
                             ExcludeSemantics(
                               child: Icon(
-                                CupertinoIcons.check_mark_circled_solid,
+                                AppPlatformIcon.success(context),
                                 color: CupertinoColors.white.withValues(
                                   alpha: 0.92,
                                 ),

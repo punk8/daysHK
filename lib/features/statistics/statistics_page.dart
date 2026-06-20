@@ -3,7 +3,9 @@ import 'package:flutter/cupertino.dart';
 import '../../domain/models/stay_record.dart';
 import '../../domain/services/stay_statistics_service.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/theme/platform_style.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/cupertino_controls.dart';
 import '../../shared/widgets/page_scaffold.dart';
 
 class StatisticsPage extends StatefulWidget {
@@ -49,22 +51,13 @@ class _StatisticsPageState extends State<StatisticsPage> {
       children: [
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: CupertinoSlidingSegmentedControl<int>(
-            groupValue: _year,
-            backgroundColor: context.appColor(AppColors.monthZero),
-            thumbColor: context.appColor(AppColors.surface),
-            children: {
-              for (final year in years)
-                year: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Text('$year年'),
-                ),
-            },
-            onValueChanged: (value) {
-              if (value != null) {
-                setState(() => _year = value);
-              }
+          physics: AppPlatformStyle.scrollPhysics(context),
+          child: AppSegmentedControl<int>(
+            value: _year,
+            values: years,
+            labelBuilder: (year) => '$year年',
+            onChanged: (value) {
+              setState(() => _year = value);
             },
           ),
         ),

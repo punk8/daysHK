@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 import '../../app/bootstrap.dart';
 import '../../core/time/hk_date.dart';
@@ -14,6 +15,8 @@ import '../settings/settings_page.dart';
 import '../statistics/statistics_page.dart';
 import '../../shared/widgets/app_notice.dart';
 import '../../shared/widgets/app_haptics.dart';
+import '../../shared/theme/platform_icons.dart';
+import '../../shared/theme/platform_style.dart';
 import '../../widget/widget_sync_service.dart';
 
 class AppShell extends StatefulWidget {
@@ -29,6 +32,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   final _statisticsService = StayStatisticsService();
   late final CupertinoTabController _tabController;
   var _selectedIndex = 0;
+  final _materialTabVisited = <bool>[true, false, false, false, false];
   var _records = <StayRecord>[];
   var _locationPermissionStatus = AppLocationPermissionStatus.unknown;
   var _isLoading = true;
@@ -63,12 +67,21 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (_selectedIndex == _tabController.index) {
       return;
     }
-    setState(() => _selectedIndex = _tabController.index);
+    setState(() {
+      _selectedIndex = _tabController.index;
+      _materialTabVisited[_selectedIndex] = true;
+    });
   }
 
   void _selectTab(int index) {
     if (index != _selectedIndex) {
       AppHaptics.selection(context);
+    }
+    if (AppPlatformStyle.isMaterial(context)) {
+      setState(() {
+        _selectedIndex = index;
+        _materialTabVisited[index] = true;
+      });
     }
     _tabController.index = index;
   }
@@ -116,7 +129,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final opened = await widget.dependencies.locationPermission
         .openSystemSettings();
     if (!opened && mounted) {
-      AppNotice.show(context, '无法打开系统设置，请手动前往 iOS 设置。');
+      AppNotice.show(context, '无法打开系统设置，请手动前往应用设置。');
     }
     await _reload();
   }
@@ -125,11 +138,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     return WidgetSummary(
       totalDays: _statisticsService.stayDateKeys(records, today).length,
       currentYearDays: _statisticsService
-          .buildAnnualSummary(
-            records: records,
-            year: today.year,
-            today: today,
-          )
+          .buildAnnualSummary(records: records, year: today.year, today: today)
           .estimatedStayDays,
       currentYear: today.year,
       lastUpdatedAt: DateTime.now(),
@@ -140,8 +149,66 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final today = hkToday();
     if (_isLoading) {
-      return const CupertinoPageScaffold(
-        child: Center(child: CupertinoActivityIndicator()),
+      return AppLoadingScaffold(
+        child: Center(
+          child: AppPlatformStyle.isMaterial(context)
+              ? const CircularProgressIndicator()
+              : const CupertinoActivityIndicator(),
+        ),
+      );
+    }
+
+    if (AppPlatformStyle.isMaterial(context)) {
+      return Scaffold(
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            for (var index = 0; index < 5; index++)
+              _materialTabVisited[index]
+                  ? Navigator(
+                      key: ValueKey('material-tab-$index-$_contentVersion'),
+                      onGenerateRoute: (_) => MaterialPageRoute<void>(
+                        builder: (context) => _buildTabPage(index, today),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _selectTab,
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(AppPlatformIcon.home(context)),
+              activeIcon: Icon(AppPlatformIcon.home(context, filled: true)),
+              label: '首页',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(AppPlatformIcon.statistics(context)),
+              activeIcon: Icon(
+                AppPlatformIcon.statistics(context, filled: true),
+              ),
+              label: '统计',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(AppPlatformIcon.records(context)),
+              activeIcon: Icon(AppPlatformIcon.records(context, filled: true)),
+              label: '记录',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(AppPlatformIcon.addRecord(context)),
+              activeIcon: Icon(
+                AppPlatformIcon.addRecord(context, filled: true),
+              ),
+              label: '补录',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(AppPlatformIcon.settings(context)),
+              activeIcon: Icon(AppPlatformIcon.settings(context, filled: true)),
+              label: '设置',
+            ),
+          ],
+        ),
       );
     }
 
@@ -150,39 +217,38 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       tabBar: CupertinoTabBar(
         currentIndex: _selectedIndex,
         onTap: _selectTab,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.house),
-            activeIcon: Icon(CupertinoIcons.house_fill),
+            icon: Icon(AppPlatformIcon.home(context)),
+            activeIcon: Icon(AppPlatformIcon.home(context, filled: true)),
             label: '首页',
           ),
           BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.chart_bar),
-            activeIcon: Icon(CupertinoIcons.chart_bar_fill),
+            icon: Icon(AppPlatformIcon.statistics(context)),
+            activeIcon: Icon(AppPlatformIcon.statistics(context, filled: true)),
             label: '统计',
           ),
           BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.list_bullet),
-            activeIcon: Icon(CupertinoIcons.list_bullet),
+            icon: Icon(AppPlatformIcon.records(context)),
+            activeIcon: Icon(AppPlatformIcon.records(context, filled: true)),
             label: '记录',
           ),
           BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.plus_circle),
-            activeIcon: Icon(CupertinoIcons.plus_circle_fill),
+            icon: Icon(AppPlatformIcon.addRecord(context)),
+            activeIcon: Icon(AppPlatformIcon.addRecord(context, filled: true)),
             label: '补录',
           ),
           BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.gear),
-            activeIcon: Icon(CupertinoIcons.gear_solid),
+            icon: Icon(AppPlatformIcon.settings(context)),
+            activeIcon: Icon(AppPlatformIcon.settings(context, filled: true)),
             label: '设置',
           ),
         ],
       ),
-      tabBuilder: (context, index) =>
-          CupertinoTabView(
-            key: ValueKey('tab-$index-$_contentVersion'),
-            builder: (context) => _buildTabPage(index, today),
-          ),
+      tabBuilder: (context, index) => CupertinoTabView(
+        key: ValueKey('tab-$index-$_contentVersion'),
+        builder: (context) => _buildTabPage(index, today),
+      ),
     );
   }
 
@@ -234,5 +300,19 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         onOpenSettings: _openSystemSettings,
       ),
     };
+  }
+}
+
+class AppLoadingScaffold extends StatelessWidget {
+  const AppLoadingScaffold({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (AppPlatformStyle.isMaterial(context)) {
+      return Scaffold(body: child);
+    }
+    return CupertinoPageScaffold(child: child);
   }
 }

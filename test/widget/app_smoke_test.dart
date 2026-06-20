@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:days_in_hk/app/app.dart';
@@ -132,9 +133,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final dashboardButton = find.widgetWithText(AppCupertinoButton, '手动补录');
+    final dashboardButton = find.widgetWithText(AppButton, '手动补录');
     expect(dashboardButton, findsOneWidget);
-    await tester.tap(dashboardButton);
+    final dashboardButtonText = find.text('手动补录');
+    await tester.ensureVisible(dashboardButtonText);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
+    await tester.pumpAndSettle();
+    await tester.tap(dashboardButtonText);
     await tester.pumpAndSettle();
 
     expect(find.text('入港日期'), findsOneWidget);
@@ -164,7 +169,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('暂无入离港记录'), findsOneWidget);
 
-    final emptyStateButton = find.widgetWithText(AppCupertinoButton, '手动补录');
+    final emptyStateButton = find.widgetWithText(AppButton, '手动补录');
     expect(emptyStateButton, findsOneWidget);
     await tester.tap(emptyStateButton);
     await tester.pumpAndSettle();
@@ -240,7 +245,10 @@ void main() {
     expect(find.text('定位权限：未授权'), findsOneWidget);
 
     permission.status = AppLocationPermissionStatus.ready;
-    await tester.tap(find.text('去设置'));
+    await tester.tap(
+      find.widgetWithText(TextButton, '去设置'),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('定位权限：未授权'), findsNothing);
@@ -771,7 +779,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       _TestHost(
-        child: AppCupertinoButton(
+        child: AppButton(
           label: '保存记录',
           semanticHint: '保存这条入离港补录记录',
           onPressed: () {},
@@ -800,7 +808,7 @@ void main() {
         child: Center(
           child: SizedBox(
             width: 150,
-            child: AppCupertinoButton(
+            child: AppButton(
               label: '检测当前位置',
               icon: CupertinoIcons.location_fill,
               semanticHint: '读取当前位置并判断是否需要生成候选记录',
@@ -823,7 +831,7 @@ void main() {
     await tester.pumpWidget(
       _TestHost(
         child: Builder(
-          builder: (context) => AppCupertinoButton(
+          builder: (context) => AppButton(
             label: '显示通知',
             onPressed: () => AppNotice.show(
               context,
@@ -866,7 +874,7 @@ void main() {
         disableAnimations: true,
         accessibleNavigation: true,
         child: Builder(
-          builder: (context) => AppCupertinoButton(
+          builder: (context) => AppButton(
             label: '显示通知',
             onPressed: () => AppNotice.show(context, '无需动画'),
           ),

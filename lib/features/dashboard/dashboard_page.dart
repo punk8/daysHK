@@ -1,10 +1,11 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
 import '../../domain/services/stay_statistics_service.dart';
 import '../../location/permissions/location_permission_status.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/theme/platform_icons.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/badges.dart';
 import '../../shared/widgets/cupertino_controls.dart';
@@ -45,7 +46,7 @@ class DashboardPage extends StatelessWidget {
       title: '在港日记',
       subtitle: '按香港自然日统计',
       trailing: AppIconButton(
-        icon: CupertinoIcons.bell,
+        icon: AppPlatformIcon.notifications(context),
         label: '通知',
         hint: '打开通知设置',
         onPressed: () {},
@@ -80,13 +81,13 @@ class DashboardPage extends StatelessWidget {
                       .withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const SizedBox(
+                child: SizedBox(
                   width: 68,
                   height: 68,
                   child: ExcludeSemantics(
                     child: Icon(
-                      CupertinoIcons.building_2_fill,
-                      color: AppColors.teal,
+                      AppPlatformIcon.building(context),
+                      color: context.appColor(AppColors.teal),
                       size: 34,
                     ),
                   ),
@@ -171,9 +172,9 @@ class DashboardPage extends StatelessWidget {
                             child: ExcludeSemantics(
                               child: Icon(
                                 latest.exitDate == null
-                                    ? CupertinoIcons.arrow_down_left
-                                    : CupertinoIcons.arrow_right_arrow_left,
-                                color: CupertinoColors.white,
+                                    ? AppPlatformIcon.entry(context)
+                                    : AppPlatformIcon.roundTrip(context),
+                                color: const Color(0xFFFFFFFF),
                               ),
                             ),
                           ),
@@ -210,10 +211,10 @@ class DashboardPage extends StatelessWidget {
             color: AppColors.warning,
             child: Row(
               children: [
-                const ExcludeSemantics(
+                ExcludeSemantics(
                   child: Icon(
-                    CupertinoIcons.location_slash,
-                    color: CupertinoColors.systemOrange,
+                    AppPlatformIcon.locationOff(context),
+                    color: context.appColor(AppColors.warningText),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -232,7 +233,7 @@ class DashboardPage extends StatelessWidget {
                 ),
                 AppTextButton(
                   label: '去设置',
-                  hint: '打开 iOS 系统设置调整定位权限',
+                  hint: '打开系统设置调整定位权限',
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   onPressed: onOpenSettings,
                 ),
@@ -241,9 +242,10 @@ class DashboardPage extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 14),
-        AppCupertinoButton(
+        AppButton(
           label: '手动补录',
-          icon: CupertinoIcons.plus_circle,
+          icon: AppPlatformIcon.addRecord(context),
+          fullWidth: true,
           semanticHint: '打开手动补录页面',
           onPressed: onManualEntry,
         ),
@@ -264,10 +266,10 @@ class DashboardPage extends StatelessWidget {
 
   String get _permissionMessage {
     return switch (locationPermissionStatus) {
-      AppLocationPermissionStatus.serviceDisabled => '请开启 iOS 定位服务后再使用自动记录。',
+      AppLocationPermissionStatus.serviceDisabled => '请开启系统定位服务后再使用自动记录。',
       AppLocationPermissionStatus.denied ||
       AppLocationPermissionStatus.deniedForever => '请在系统设置中允许定位权限。',
-      AppLocationPermissionStatus.whileInUseOnly => '建议开启“始终允许”，以获得更准确的自动记录。',
+      AppLocationPermissionStatus.whileInUseOnly => '建议开启后台定位权限，以获得更准确的自动记录。',
       AppLocationPermissionStatus.unknown => '建议检查定位权限，以确认自动记录可用。',
       AppLocationPermissionStatus.ready => '定位记录已准备就绪。',
     };

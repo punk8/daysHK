@@ -58,8 +58,9 @@ class AppEmptyState extends StatelessWidget {
               style: TextStyle(color: context.appColor(AppColors.muted)),
             ),
             const SizedBox(height: 20),
-            AppCupertinoButton(
+            AppButton(
               label: actionLabel,
+              fullWidth: true,
               semanticHint: actionHint,
               onPressed: onAction,
             ),

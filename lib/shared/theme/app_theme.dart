@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 class AppColors {
   static const background = CupertinoDynamicColor.withBrightnessAndContrast(
@@ -48,6 +49,12 @@ class AppColors {
     darkColor: Color(0xFF352817),
     highContrastColor: Color(0xFFFFF3D6),
     darkHighContrastColor: Color(0xFF4A2D00),
+  );
+  static const warningText = CupertinoDynamicColor.withBrightnessAndContrast(
+    color: Color(0xFFB26A00),
+    darkColor: Color(0xFFFFB84D),
+    highContrastColor: Color(0xFF8A4D00),
+    darkHighContrastColor: Color(0xFFFFD18A),
   );
   static const info = CupertinoDynamicColor.withBrightnessAndContrast(
     color: Color(0xFFEFF5FF),
@@ -136,7 +143,7 @@ CupertinoThemeData buildCupertinoAppTheme() {
         fontFamily: 'CupertinoSystemText',
         color: AppColors.ink,
         fontSize: 17,
-        letterSpacing: -0.41,
+        letterSpacing: 0,
         decoration: TextDecoration.none,
       ),
       navLargeTitleTextStyle: TextStyle(
@@ -154,9 +161,63 @@ CupertinoThemeData buildCupertinoAppTheme() {
         color: AppColors.ink,
         fontSize: 17,
         fontWeight: FontWeight.w600,
-        letterSpacing: -0.41,
+        letterSpacing: 0,
         decoration: TextDecoration.none,
       ),
+    ),
+  );
+}
+
+ThemeData buildMaterialAppTheme(Brightness brightness) {
+  final isDark = brightness == Brightness.dark;
+  const seed = Color(0xFF326BFF);
+  final scheme = ColorScheme.fromSeed(
+    seedColor: seed,
+    brightness: brightness,
+    primary: seed,
+    surface: isDark ? const Color(0xFF182033) : CupertinoColors.white,
+  );
+  return ThemeData(
+    useMaterial3: true,
+    brightness: brightness,
+    colorScheme: scheme,
+    scaffoldBackgroundColor: isDark
+        ? const Color(0xFF0B1220)
+        : const Color(0xFFF5F8FF),
+    fontFamily: null,
+    appBarTheme: AppBarTheme(
+      centerTitle: false,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      backgroundColor: isDark
+          ? const Color(0xFF0B1220)
+          : const Color(0xFFF5F8FF),
+      foregroundColor: scheme.onSurface,
+    ),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: scheme.primary,
+      unselectedItemColor: isDark
+          ? const Color(0xFFA6AEC0)
+          : const Color(0xFF6D7890),
+      backgroundColor: scheme.surface,
+      elevation: 0,
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: scheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+    ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: scheme.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+    ),
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(fontSize: 17),
+      bodyLarge: TextStyle(fontSize: 17),
+      titleLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
+      titleMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+      labelLarge: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
     ),
   );
 }
