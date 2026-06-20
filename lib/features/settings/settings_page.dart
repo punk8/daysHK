@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
@@ -8,6 +8,8 @@ import '../../location/permissions/location_permission_service.dart';
 import '../../location/permissions/location_permission_status.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_notice.dart';
+import '../../shared/widgets/cupertino_controls.dart';
 import '../../shared/widgets/page_scaffold.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -55,7 +57,7 @@ class SettingsPage extends StatelessWidget {
         const SizedBox(height: 12),
         AppCard(
           child: const _SettingsTile(
-            icon: Icons.storage_outlined,
+            icon: CupertinoIcons.archivebox,
             title: '数据存储',
             subtitle: '所有数据仅保存在本地设备中，不会上传或分享你的数据。',
           ),
@@ -65,38 +67,23 @@ class SettingsPage extends StatelessWidget {
           child: Column(
             children: [
               _SettingsTile(
-                icon: Icons.delete_outline,
+                icon: CupertinoIcons.delete,
                 iconColor: AppColors.red,
                 title: '清除所有数据',
                 titleColor: AppColors.red,
                 subtitle: '删除本地所有记录，无法恢复',
                 onTap: () async {
-                  final confirmed = await showDialog<bool>(
+                  final confirmed = await showAppConfirmationDialog(
                     context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('清除所有数据'),
-                      content: const Text('将删除本地所有入离港记录，无法恢复。是否继续？'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('取消'),
-                        ),
-                        FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.red,
-                          ),
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('清除'),
-                        ),
-                      ],
-                    ),
+                    title: '清除所有数据',
+                    message: '将删除本地所有入离港记录，无法恢复。是否继续？',
+                    confirmLabel: '清除',
+                    destructive: true,
                   );
-                  if (confirmed == true) {
+                  if (confirmed) {
                     await onClearAll();
                     if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(const SnackBar(content: Text('本地数据已清除')));
+                      AppNotice.show(context, '本地数据已清除');
                     }
                   }
                 },
@@ -109,19 +96,19 @@ class SettingsPage extends StatelessWidget {
           child: Column(
             children: const [
               _SettingsTile(
-                icon: Icons.privacy_tip_outlined,
+                icon: CupertinoIcons.hand_raised,
                 title: '隐私说明',
                 subtitle: '本应用用于个人记录参考，不构成永居资格判断。',
               ),
-              Divider(),
+              _SettingsDivider(),
               _SettingsTile(
-                icon: Icons.description_outlined,
+                icon: CupertinoIcons.doc_text,
                 title: '使用条款',
                 subtitle: '统计结果基于你的记录估算，可能存在误差。',
               ),
-              Divider(),
+              _SettingsDivider(),
               _SettingsTile(
-                icon: Icons.info_outline,
+                icon: CupertinoIcons.info_circle,
                 title: '关于在港日记',
                 subtitle: '版本 1.0.0',
               ),
@@ -175,21 +162,12 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.radar_outlined),
-          title: const Text(
-            '后台自动检测',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          subtitle: statusMessage == null ? null : Text(statusMessage),
-          trailing: Text(
-            statusLabel,
-            style: const TextStyle(
-              color: AppColors.teal,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        _SettingsStatusRow(
+          icon: CupertinoIcons.location_circle,
+          title: '后台自动检测',
+          subtitle: statusMessage,
+          trailing: statusLabel,
+          trailingColor: AppColors.teal,
         ),
         if (_state.lastEvent != null) ...[
           const SizedBox(height: 4),
@@ -205,22 +183,24 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            OutlinedButton.icon(
+            AppCupertinoButton(
+              label: '刷新状态',
+              icon: CupertinoIcons.refresh,
+              filled: false,
               onPressed: _isBusy ? null : _refresh,
-              icon: const Icon(Icons.refresh),
-              label: const Text('刷新状态'),
             ),
             if (!isRunning)
-              FilledButton.icon(
+              AppCupertinoButton(
+                label: '启动检测',
+                icon: CupertinoIcons.play_arrow_solid,
                 onPressed: _isBusy ? null : _start,
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('启动检测'),
               ),
             if (isRunning)
-              OutlinedButton.icon(
+              AppCupertinoButton(
+                label: '停止',
+                icon: CupertinoIcons.stop_fill,
+                filled: false,
                 onPressed: _isBusy ? null : _stop,
-                icon: const Icon(Icons.stop),
-                label: const Text('停止'),
               ),
           ],
         ),
@@ -233,26 +213,13 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
   }
 
   Future<void> _start() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirmationDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('开启后台自动检测'),
-        content: const Text(
-          '后台自动检测需要“始终允许”定位权限。系统可能会先询问定位授权；授权后请再次点击启动检测完成开启。',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('继续'),
-          ),
-        ],
-      ),
+      title: '开启后台自动检测',
+      message: '后台自动检测需要“始终允许”定位权限。系统可能会先询问定位授权；授权后请再次点击启动检测完成开启。',
+      confirmLabel: '继续',
     );
-    if (confirmed != true) {
+    if (!confirmed) {
       return;
     }
 
@@ -357,9 +324,7 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('已根据最近原生事件生成需要确认的候选记录')));
+    AppNotice.show(context, '已根据最近原生事件生成需要确认的候选记录');
   }
 }
 
@@ -391,9 +356,11 @@ class _NativeEventSummary extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.teal.withValues(alpha: 0.08),
+        color: context.appColor(AppColors.teal).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.teal.withValues(alpha: 0.22)),
+        border: Border.all(
+          color: context.appColor(AppColors.teal).withValues(alpha: 0.22),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,10 +376,11 @@ class _NativeEventSummary extends StatelessWidget {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
+            child: AppCupertinoButton(
+              label: '生成候选记录',
+              icon: CupertinoIcons.location_solid,
+              filled: false,
               onPressed: onCreateCandidate,
-              icon: const Icon(Icons.add_location_alt_outlined),
-              label: const Text('生成候选记录'),
             ),
           ),
         ],
@@ -457,36 +425,28 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.location_on_outlined),
-          title: const Text(
-            '定位权限状态',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          subtitle: Text(_status),
-          trailing: Text(
-            _permissionLabel,
-            style: TextStyle(
-              color: _permissionColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        _SettingsStatusRow(
+          icon: CupertinoIcons.location,
+          title: '定位权限状态',
+          subtitle: _status,
+          trailing: _permissionLabel,
+          trailingColor: _permissionColor,
         ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            OutlinedButton.icon(
+            AppCupertinoButton(
+              label: '检查权限',
+              icon: CupertinoIcons.checkmark_shield,
+              filled: false,
               onPressed: _isBusy ? null : _checkPermission,
-              icon: const Icon(Icons.verified_user_outlined),
-              label: const Text('检查权限'),
             ),
-            FilledButton.icon(
+            AppCupertinoButton(
+              label: '检测当前位置',
+              icon: CupertinoIcons.location_fill,
               onPressed: _isBusy ? null : _detectCurrentLocation,
-              icon: const Icon(Icons.my_location),
-              label: const Text('检测当前位置'),
             ),
           ],
         ),
@@ -555,7 +515,7 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
       AppLocationPermissionStatus.ready => AppColors.teal,
       AppLocationPermissionStatus.whileInUseOnly ||
       AppLocationPermissionStatus.serviceDisabled ||
-      AppLocationPermissionStatus.unknown => Colors.orange,
+      AppLocationPermissionStatus.unknown => CupertinoColors.systemOrange,
       AppLocationPermissionStatus.denied ||
       AppLocationPermissionStatus.deniedForever => AppColors.red,
     };
@@ -575,13 +535,12 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
           : '检测结果：${result.boundaryResult.classification.label}，已生成需要确认的候选记录。';
       _isBusy = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_status),
-        action: candidate == null
-            ? null
-            : SnackBarAction(label: '查看记录', onPressed: widget.onShowRecords),
-      ),
+    AppNotice.show(
+      context,
+      _status,
+      action: candidate == null
+          ? null
+          : AppNoticeAction(label: '查看记录', onPressed: widget.onShowRecords),
     );
   }
 }
@@ -605,16 +564,110 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: iconColor ?? AppColors.ink),
-      title: Text(
-        title,
-        style: TextStyle(fontWeight: FontWeight.w700, color: titleColor),
+    return CupertinoButton(
+      minimumSize: Size.zero,
+      padding: EdgeInsets.zero,
+      onPressed: onTap,
+      child: Row(
+        children: [
+          Icon(icon, color: context.appColor(iconColor ?? AppColors.ink)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: context.appColor(titleColor ?? AppColors.ink),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: context.appColor(AppColors.muted),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onTap != null)
+            Icon(
+              CupertinoIcons.chevron_forward,
+              color: context.appColor(AppColors.muted),
+              size: 18,
+            ),
+        ],
       ),
-      subtitle: Text(subtitle),
-      trailing: onTap == null ? null : const Icon(Icons.chevron_right),
-      onTap: onTap,
+    );
+  }
+}
+
+class _SettingsDivider extends StatelessWidget {
+  const _SettingsDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 1,
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      color: context.appColor(AppColors.border),
+    );
+  }
+}
+
+class _SettingsStatusRow extends StatelessWidget {
+  const _SettingsStatusRow({
+    required this.icon,
+    required this.title,
+    required this.trailing,
+    required this.trailingColor,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final String trailing;
+  final Color trailingColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: context.appColor(AppColors.ink)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle!,
+                  style: TextStyle(
+                    color: context.appColor(AppColors.muted),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          trailing,
+          style: TextStyle(
+            color: context.appColor(trailingColor),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }

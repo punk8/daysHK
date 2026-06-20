@@ -1,10 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_notice.dart';
 import '../../shared/widgets/badges.dart';
+import '../../shared/widgets/cupertino_controls.dart';
+import '../../shared/widgets/app_haptics.dart';
 import '../../shared/widgets/page_scaffold.dart';
 
 class RecordsPage extends StatelessWidget {
@@ -32,7 +35,7 @@ class RecordsPage extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 10, top: 4),
               child: Text(
                 group.key,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: AppTextStyles.section,
               ),
             ),
             for (final record in group.value)
@@ -79,12 +82,23 @@ class _RecordTile extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: isExit ? AppColors.red : AppColors.teal,
-                  child: Icon(
-                    isExit ? Icons.logout : Icons.login,
-                    color: Colors.white,
-                    size: 18,
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: context.appColor(
+                      isExit ? AppColors.red : AppColors.teal,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Icon(
+                      isExit
+                          ? CupertinoIcons.arrow_up_right
+                          : CupertinoIcons.arrow_down_left,
+                      color: CupertinoColors.white,
+                      size: 18,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -95,7 +109,9 @@ class _RecordTile extends StatelessWidget {
                       Text(
                         isExit ? '入离港记录' : '入港记录',
                         style: TextStyle(
-                          color: isExit ? AppColors.red : AppColors.ink,
+                          color: context.appColor(
+                            isExit ? AppColors.red : AppColors.ink,
+                          ),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -106,55 +122,17 @@ class _RecordTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    if (value == 'confirm') {
-                      await onSave(
-                        record.copyWith(
-                          confirmationStatus: ConfirmationStatus.confirmed,
-                          source: RecordSource.userConfirmed,
-                          updatedAt: DateTime.now(),
-                        ),
-                      );
-                    } else if (value == 'edit') {
-                      await _showEditRecordDialog(
-                        context: context,
-                        record: record,
-                        onSave: onSave,
-                      );
-                    } else if (value == 'delete') {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('删除记录'),
-                          content: const Text('删除后将同步更新统计结果。'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('取消'),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('删除'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirmed == true) {
-                        await onDelete(record.id);
-                      }
-                    }
+                CupertinoButton(
+                  minimumSize: const Size(36, 36),
+                  padding: EdgeInsets.zero,
+                  onPressed: () {
+                    AppHaptics.selection(context);
+                    _showRecordActions(context);
                   },
-                  itemBuilder: (context) => [
-                    if (record.confirmationStatus ==
-                        ConfirmationStatus.needsConfirmation)
-                      const PopupMenuItem(
-                        value: 'confirm',
-                        child: Text('确认记录'),
-                      ),
-                    const PopupMenuItem(value: 'edit', child: Text('编辑 / 修正')),
-                    const PopupMenuItem(value: 'delete', child: Text('删除')),
-                  ],
+                  child: Icon(
+                    CupertinoIcons.ellipsis_circle,
+                    color: context.appColor(AppColors.muted),
+                  ),
                 ),
               ],
             ),
@@ -166,11 +144,7 @@ class _RecordTile extends StatelessWidget {
                 SourceBadge(source: record.source),
                 ConfirmationBadge(status: record.confirmationStatus),
                 if (record.locationName != null)
-                  Chip(
-                    avatar: const Icon(Icons.place_outlined, size: 16),
-                    label: Text(record.locationName!),
-                    visualDensity: VisualDensity.compact,
-                  ),
+                  _LocationBadge(label: record.locationName!),
               ],
             ),
             if (record.confirmationStatus ==
@@ -179,31 +153,33 @@ class _RecordTile extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: AppCupertinoButton(
+                      label: '忽略',
+                      filled: false,
                       onPressed: () => onSave(
                         record.copyWith(
                           confirmationStatus: ConfirmationStatus.rejected,
                           updatedAt: DateTime.now(),
                         ),
                       ),
-                      child: const Text('忽略'),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: FilledButton(
+                    child: AppCupertinoButton(
+                      label: '修正',
                       onPressed: () => _showEditRecordDialog(
                         context: context,
                         record: record,
                         onSave: onSave,
                         confirmAfterSave: true,
                       ),
-                      child: const Text('修正'),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: FilledButton(
+                    child: AppCupertinoButton(
+                      label: '确认',
                       onPressed: () => onSave(
                         record.copyWith(
                           confirmationStatus: ConfirmationStatus.confirmed,
@@ -211,12 +187,117 @@ class _RecordTile extends StatelessWidget {
                           updatedAt: DateTime.now(),
                         ),
                       ),
-                      child: const Text('确认'),
                     ),
                   ),
                 ],
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showRecordActions(BuildContext context) async {
+    final value = await showCupertinoModalPopup<String>(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: const Text('记录操作'),
+        actions: [
+          if (record.confirmationStatus == ConfirmationStatus.needsConfirmation)
+            CupertinoActionSheetAction(
+              onPressed: () {
+                AppHaptics.selection(context);
+                Navigator.pop(context, 'confirm');
+              },
+              child: const Text('确认记录'),
+            ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              AppHaptics.selection(context);
+              Navigator.pop(context, 'edit');
+            },
+            child: const Text('编辑 / 修正'),
+          ),
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              AppHaptics.selection(context);
+              Navigator.pop(context, 'delete');
+            },
+            child: const Text('删除'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+      ),
+    );
+
+    if (!context.mounted || value == null) {
+      return;
+    }
+    if (value == 'confirm') {
+      await onSave(
+        record.copyWith(
+          confirmationStatus: ConfirmationStatus.confirmed,
+          source: RecordSource.userConfirmed,
+          updatedAt: DateTime.now(),
+        ),
+      );
+    } else if (value == 'edit') {
+      await _showEditRecordDialog(
+        context: context,
+        record: record,
+        onSave: onSave,
+      );
+    } else if (value == 'delete') {
+      final confirmed = await showAppConfirmationDialog(
+        context: context,
+        title: '删除记录',
+        message: '删除后将同步更新统计结果。',
+        confirmLabel: '删除',
+        destructive: true,
+      );
+      if (confirmed) {
+        await onDelete(record.id);
+      }
+    }
+  }
+}
+
+class _LocationBadge extends StatelessWidget {
+  const _LocationBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.appColor(AppColors.info),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              CupertinoIcons.placemark,
+              size: 14,
+              color: context.appColor(AppColors.teal),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: context.appColor(AppColors.ink),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -230,23 +311,23 @@ Future<void> _showEditRecordDialog({
   required Future<void> Function(StayRecord record) onSave,
   bool confirmAfterSave = false,
 }) async {
-  final updated = await showDialog<StayRecord>(
+  final updated = await showCupertinoModalPopup<StayRecord>(
     context: context,
-    builder: (context) =>
-        _EditRecordDialog(record: record, confirmAfterSave: confirmAfterSave),
+    builder: (context) => _EditRecordSheet(
+      record: record,
+      confirmAfterSave: confirmAfterSave,
+    ),
   );
   if (updated != null) {
     await onSave(updated);
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('记录已更新')));
+      AppNotice.show(context, '记录已更新');
     }
   }
 }
 
-class _EditRecordDialog extends StatefulWidget {
-  const _EditRecordDialog({
+class _EditRecordSheet extends StatefulWidget {
+  const _EditRecordSheet({
     required this.record,
     required this.confirmAfterSave,
   });
@@ -255,10 +336,10 @@ class _EditRecordDialog extends StatefulWidget {
   final bool confirmAfterSave;
 
   @override
-  State<_EditRecordDialog> createState() => _EditRecordDialogState();
+  State<_EditRecordSheet> createState() => _EditRecordSheetState();
 }
 
-class _EditRecordDialogState extends State<_EditRecordDialog> {
+class _EditRecordSheetState extends State<_EditRecordSheet> {
   late var _entryDate = widget.record.entryDate;
   late DateTime? _exitDate = widget.record.exitDate;
   late final TextEditingController _locationController = TextEditingController(
@@ -282,88 +363,119 @@ class _EditRecordDialogState extends State<_EditRecordDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('编辑记录'),
-      content: SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _EditableDateField(
-                label: '入港日期',
-                date: _entryDate,
-                onTap: () async {
-                  final picked = await _pickDate(_entryDate);
-                  if (picked != null) {
-                    setState(() => _entryDate = picked);
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              _EditableDateField(
-                label: '离港日期（可选）',
-                date: _exitDate,
-                onTap: () async {
-                  final picked = await _pickDate(_exitDate ?? _entryDate);
-                  if (picked != null) {
-                    setState(() => _exitDate = picked);
-                  }
-                },
-                onClear: () => setState(() => _exitDate = null),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const Key('record-edit-location-field'),
-                controller: _locationController,
-                decoration: const InputDecoration(
-                  labelText: '口岸 / 地点',
-                  border: OutlineInputBorder(),
+    return CupertinoPopupSurface(
+      child: SafeArea(
+        top: false,
+        child: CupertinoTheme(
+          data: CupertinoTheme.of(context),
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.82,
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 52,
+                  child: Row(
+                    children: [
+                      CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('取消'),
+                      ),
+                      const Expanded(
+                        child: Text(
+                          '编辑记录',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        onPressed: _save,
+                        child: const Text(
+                          '保存',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _transportController,
-                decoration: const InputDecoration(
-                  labelText: '交通方式',
-                  border: OutlineInputBorder(),
+                Container(height: 1, color: context.appColor(AppColors.border)),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        AppCupertinoDateField(
+                          label: '入港日期',
+                          date: _entryDate,
+                          onTap: () async {
+                            final picked = await _pickDate(_entryDate);
+                            if (picked != null) {
+                              setState(() => _entryDate = picked);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        AppCupertinoDateField(
+                          label: '离港日期（可选）',
+                          date: _exitDate,
+                          onTap: () async {
+                            final picked = await _pickDate(
+                              _exitDate ?? _entryDate,
+                            );
+                            if (picked != null) {
+                              setState(() => _exitDate = picked);
+                            }
+                          },
+                          onClear: () => setState(() => _exitDate = null),
+                        ),
+                        const SizedBox(height: 12),
+                        AppCupertinoTextField(
+                          label: '口岸 / 地点',
+                          fieldKey: const Key('record-edit-location-field'),
+                          controller: _locationController,
+                        ),
+                        const SizedBox(height: 12),
+                        AppCupertinoTextField(
+                          label: '交通方式',
+                          controller: _transportController,
+                        ),
+                        const SizedBox(height: 12),
+                        AppCupertinoTextField(
+                          label: '备注',
+                          controller: _noteController,
+                          minLines: 2,
+                          maxLines: 3,
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            _error!,
+                            style: TextStyle(
+                              color: context.appColor(AppColors.red),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _noteController,
-                minLines: 2,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: '备注',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 10),
-                Text(_error!, style: const TextStyle(color: AppColors.red)),
               ],
-            ],
+            ),
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
-        ),
-        FilledButton(onPressed: _save, child: const Text('保存')),
-      ],
     );
   }
 
   Future<DateTime?> _pickDate(DateTime initial) {
-    return showDatePicker(
+    return showAppDatePicker(
       context: context,
       initialDate: initial,
       firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-      helpText: '选择日期',
+      title: '选择日期',
     );
   }
 
@@ -405,47 +517,5 @@ class _EditRecordDialogState extends State<_EditRecordDialog> {
   String? _emptyToNull(String value) {
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
-  }
-}
-
-class _EditableDateField extends StatelessWidget {
-  const _EditableDateField({
-    required this.label,
-    required this.date,
-    required this.onTap,
-    this.onClear,
-  });
-
-  final String label;
-  final DateTime? date;
-  final VoidCallback onTap;
-  final VoidCallback? onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (onClear != null && date != null)
-                IconButton(
-                  tooltip: '清空日期',
-                  onPressed: onClear,
-                  icon: const Icon(Icons.close),
-                ),
-              const Icon(Icons.calendar_today_outlined),
-              const SizedBox(width: 10),
-            ],
-          ),
-        ),
-        child: Text(date == null ? '未选择' : dateKey(date!)),
-      ),
-    );
   }
 }

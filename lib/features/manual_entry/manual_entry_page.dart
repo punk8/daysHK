@@ -1,10 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
 import '../../domain/services/stay_statistics_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_notice.dart';
+import '../../shared/widgets/cupertino_controls.dart';
+import '../../shared/widgets/app_haptics.dart';
 import '../../shared/widgets/page_scaffold.dart';
 
 class ManualEntryPage extends StatefulWidget {
@@ -41,16 +44,19 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
 
     return AppPage(
       title: '手动补录',
-      trailing: IconButton(
-        tooltip: '说明',
-        onPressed: () => showDialog<void>(
+      trailing: CupertinoButton(
+        minimumSize: const Size(36, 36),
+        padding: EdgeInsets.zero,
+        onPressed: () => showAppInfoDialog(
           context: context,
-          builder: (context) => const AlertDialog(
-            title: Text('补录说明'),
-            content: Text('离港日期为空时，代表你目前仍在香港。统计按香港自然日估算。'),
-          ),
+          title: '补录说明',
+          message: '离港日期为空时，代表你目前仍在香港。统计按香港自然日估算。',
         ),
-        icon: const Icon(Icons.info_outline),
+        child: Icon(
+          CupertinoIcons.info_circle,
+          color: context.appColor(AppColors.ink),
+          semanticLabel: '说明',
+        ),
       ),
       children: [
         if (openRecord != null) ...[
@@ -59,7 +65,10 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline, color: AppColors.teal),
+                Icon(
+                  CupertinoIcons.info_circle,
+                  color: context.appColor(AppColors.teal),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -72,7 +81,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
           ),
           const SizedBox(height: 14),
         ],
-        _DateField(
+        AppCupertinoDateField(
           label: '入港日期',
           date: _entryDate,
           onTap: () async {
@@ -88,7 +97,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
           },
         ),
         const SizedBox(height: 12),
-        _DateField(
+        AppCupertinoDateField(
           label: '离港日期（可选）',
           date: _exitDate,
           onTap: () async {
@@ -102,20 +111,44 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
             _sameDayRoundTrip = false;
           }),
         ),
-        CheckboxListTile(
-          value: _sameDayRoundTrip,
-          onChanged: (value) {
-            setState(() {
-              _sameDayRoundTrip = value ?? false;
-              if (_sameDayRoundTrip) {
-                _exitDate = _entryDate;
-              }
-            });
-          },
-          title: const Text('当天往返'),
-          subtitle: const Text('未选择离港日期时，视为仍在香港。'),
-          controlAffinity: ListTileControlAffinity.leading,
-          contentPadding: EdgeInsets.zero,
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '当天往返',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '未选择离港日期时，视为仍在香港。',
+                      style: TextStyle(
+                        color: context.appColor(AppColors.muted),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              CupertinoSwitch(
+                value: _sameDayRoundTrip,
+                activeTrackColor: AppColors.teal,
+                onChanged: (value) {
+                  AppHaptics.selection(context);
+                  setState(() {
+                    _sameDayRoundTrip = value;
+                    if (_sameDayRoundTrip) {
+                      _exitDate = _entryDate;
+                    }
+                  });
+                },
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         AppCard(
@@ -130,14 +163,14 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                     const SizedBox(height: 8),
                     RichText(
                       text: TextSpan(
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: context.appTextStyle(AppTextStyles.body),
                         children: [
                           TextSpan(
                             text: '$previewDays',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 36,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.teal,
+                              color: context.appColor(AppColors.teal),
                             ),
                           ),
                           const TextSpan(text: ' 天'),
@@ -148,27 +181,33 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                   ],
                 ),
               ),
-              const Icon(Icons.calendar_month_outlined, color: AppColors.teal),
+              Icon(
+                CupertinoIcons.calendar,
+                color: context.appColor(AppColors.teal),
+              ),
             ],
           ),
         ),
         if (_error != null) ...[
           const SizedBox(height: 10),
-          Text(_error!, style: const TextStyle(color: AppColors.red)),
+          Text(
+            _error!,
+            style: TextStyle(color: context.appColor(AppColors.red)),
+          ),
         ],
         const SizedBox(height: 14),
-        FilledButton(onPressed: _save, child: const Text('保存记录')),
+        AppCupertinoButton(label: '保存记录', onPressed: _save),
       ],
     );
   }
 
   Future<DateTime?> _pickDate(DateTime initial) {
-    return showDatePicker(
+    return showAppDatePicker(
       context: context,
       initialDate: initial,
       firstDate: DateTime(2000),
       lastDate: DateTime(widget.today.year + 5),
-      helpText: '选择日期',
+      title: '选择日期',
     );
   }
 
@@ -193,9 +232,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
     if (error != null) {
       setState(() => _error = error);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error)));
+        AppNotice.show(context, error);
       }
       return;
     }
@@ -203,9 +240,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
     setState(() => _error = null);
     await widget.onSave(record);
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('记录已保存')));
+      AppNotice.show(context, '记录已保存');
     }
   }
 
@@ -220,47 +255,5 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
             .toList()
           ..sort((a, b) => b.entryDate.compareTo(a.entryDate));
     return active.isEmpty ? null : active.first;
-  }
-}
-
-class _DateField extends StatelessWidget {
-  const _DateField({
-    required this.label,
-    required this.date,
-    required this.onTap,
-    this.onClear,
-  });
-
-  final String label;
-  final DateTime? date;
-  final VoidCallback onTap;
-  final VoidCallback? onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (onClear != null && date != null)
-                IconButton(
-                  tooltip: '清空',
-                  onPressed: onClear,
-                  icon: const Icon(Icons.close),
-                ),
-              const Icon(Icons.calendar_today_outlined),
-              const SizedBox(width: 10),
-            ],
-          ),
-        ),
-        child: Text(date == null ? '未选择' : dateKey(date!)),
-      ),
-    );
   }
 }

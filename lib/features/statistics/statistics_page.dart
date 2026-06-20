@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../domain/models/stay_record.dart';
 import '../../domain/services/stay_statistics_service.dart';
@@ -47,14 +47,23 @@ class _StatisticsPageState extends State<StatisticsPage> {
       children: [
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: SegmentedButton<int>(
-            segments: [
+          physics: const BouncingScrollPhysics(),
+          child: CupertinoSlidingSegmentedControl<int>(
+            groupValue: _year,
+            backgroundColor: context.appColor(AppColors.monthZero),
+            thumbColor: context.appColor(AppColors.surface),
+            children: {
               for (final year in years)
-                ButtonSegment(value: year, label: Text('$year年')),
-            ],
-            selected: {_year},
-            onSelectionChanged: (selection) =>
-                setState(() => _year = selection.first),
+                year: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text('$year年'),
+                ),
+            },
+            onValueChanged: (value) {
+              if (value != null) {
+                setState(() => _year = value);
+              }
+            },
           ),
         ),
         const SizedBox(height: 14),
@@ -71,8 +80,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 children: [
                   Text(
                     '${summary.estimatedStayDays}',
-                    style: const TextStyle(
-                      color: AppColors.teal,
+                    style: TextStyle(
+                      color: context.appColor(AppColors.teal),
                       fontSize: 54,
                       fontWeight: FontWeight.w800,
                     ),
@@ -88,7 +97,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       Text('去年同期 ${previous.estimatedStayDays} 天'),
                       Text(
                         '较去年 ${summary.estimatedStayDays - previous.estimatedStayDays >= 0 ? '+' : ''}${summary.estimatedStayDays - previous.estimatedStayDays} 天',
-                        style: const TextStyle(color: AppColors.teal),
+                        style: TextStyle(
+                          color: context.appColor(AppColors.teal),
+                        ),
                       ),
                     ],
                   ),
@@ -114,9 +125,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
               const SizedBox(height: 8),
               const Row(
                 children: [
-                  _Legend(color: Color(0xFFE8EEF0), text: '0'),
-                  _Legend(color: Color(0xFFBFD0FF), text: '1-10'),
-                  _Legend(color: Color(0xFF6F95FF), text: '11-20'),
+                  _Legend(color: AppColors.monthZero, text: '0'),
+                  _Legend(color: AppColors.monthLow, text: '1-10'),
+                  _Legend(color: AppColors.monthMedium, text: '11-20'),
                   _Legend(color: AppColors.teal, text: '21-31'),
                 ],
               ),
@@ -124,10 +135,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
           ),
         ),
         const SizedBox(height: 14),
-        const Text(
+        Text(
           '统计结果基于你的入离港记录估算，可能存在误差。',
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.muted),
+          style: TextStyle(color: context.appColor(AppColors.muted)),
         ),
       ],
     );
@@ -159,11 +170,11 @@ class _MonthBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = value == 0
-        ? const Color(0xFFE8EEF0)
+        ? AppColors.monthZero
         : value <= 10
-        ? const Color(0xFFBFD0FF)
+        ? AppColors.monthLow
         : value <= 20
-        ? const Color(0xFF6F95FF)
+        ? AppColors.monthMedium
         : AppColors.teal;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -173,11 +184,24 @@ class _MonthBar extends StatelessWidget {
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: value / 31,
-                minHeight: 12,
-                backgroundColor: const Color(0xFFE8EEF0),
-                color: color,
+              child: SizedBox(
+                height: 12,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: context.appColor(AppColors.monthZero),
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: (value / 31).clamp(0, 1),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: context.appColor(color),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -201,7 +225,7 @@ class _Legend extends StatelessWidget {
       padding: const EdgeInsets.only(right: 12),
       child: Row(
         children: [
-          Container(width: 10, height: 10, color: color),
+          Container(width: 10, height: 10, color: context.appColor(color)),
           const SizedBox(width: 4),
           Text(text, style: const TextStyle(fontSize: 12)),
         ],

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../app/bootstrap.dart';
 import '../../core/time/hk_date.dart';
@@ -10,6 +10,8 @@ import '../manual_entry/manual_entry_page.dart';
 import '../records/records_page.dart';
 import '../settings/settings_page.dart';
 import '../statistics/statistics_page.dart';
+import '../../shared/widgets/app_notice.dart';
+import '../../shared/widgets/app_haptics.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.dependencies});
@@ -65,9 +67,7 @@ class _AppShellState extends State<AppShell> {
     final opened = await widget.dependencies.locationPermission
         .openSystemSettings();
     if (!opened && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('无法打开系统设置，请手动前往 iOS 设置。')));
+      AppNotice.show(context, '无法打开系统设置，请手动前往 iOS 设置。');
     }
     await _reload();
   }
@@ -114,35 +114,51 @@ class _AppShellState extends State<AppShell> {
       ),
     ];
 
-    return Scaffold(
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: pages[_selectedIndex],
-              ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) =>
-            setState(() => _selectedIndex = index),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: '首页'),
-          NavigationDestination(icon: Icon(Icons.map_outlined), label: '统计'),
-          NavigationDestination(
-            icon: Icon(Icons.list_alt_outlined),
+    if (_isLoading) {
+      return const CupertinoPageScaffold(
+        child: Center(child: CupertinoActivityIndicator()),
+      );
+    }
+
+    return CupertinoTabScaffold(
+      tabBar: CupertinoTabBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          if (index != _selectedIndex) {
+            AppHaptics.selection(context);
+          }
+          setState(() => _selectedIndex = index);
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.house),
+            activeIcon: Icon(CupertinoIcons.house_fill),
+            label: '首页',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.chart_bar),
+            activeIcon: Icon(CupertinoIcons.chart_bar_fill),
+            label: '统计',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.list_bullet),
+            activeIcon: Icon(CupertinoIcons.list_bullet),
             label: '记录',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.add_circle_outline),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.plus_circle),
+            activeIcon: Icon(CupertinoIcons.plus_circle_fill),
             label: '补录',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.gear),
+            activeIcon: Icon(CupertinoIcons.gear_solid),
             label: '设置',
           ),
         ],
+      ),
+      tabBuilder: (context, index) => CupertinoTabView(
+        builder: (context) => pages[index],
       ),
     );
   }

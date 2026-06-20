@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+
+import '../theme/app_theme.dart';
 
 class AppCard extends StatelessWidget {
   const AppCard({
@@ -14,8 +16,12 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: color,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.appColor(color ?? AppColors.surface),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: context.appColor(AppColors.border)),
+      ),
       child: Padding(padding: padding, child: child),
     );
   }

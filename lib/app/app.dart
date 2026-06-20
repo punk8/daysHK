@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../features/shell/app_shell.dart';
 import '../shared/theme/app_theme.dart';
@@ -11,10 +11,14 @@ class DaysInHkApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return CupertinoApp(
       title: '在港日记',
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
+      theme: buildCupertinoAppTheme(),
+      localizationsDelegates: const [
+        DefaultCupertinoLocalizations.delegate,
+        DefaultWidgetsLocalizations.delegate,
+      ],
       home: AppShell(dependencies: dependencies),
     );
   }

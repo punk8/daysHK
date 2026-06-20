@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:days_in_hk/app/app.dart';
 import 'package:days_in_hk/app/bootstrap.dart';
@@ -13,6 +13,8 @@ import 'package:days_in_hk/features/records/records_page.dart';
 import 'package:days_in_hk/features/statistics/statistics_page.dart';
 import 'package:days_in_hk/domain/services/stay_statistics_service.dart';
 import 'package:days_in_hk/features/dashboard/dashboard_page.dart';
+import 'package:days_in_hk/shared/theme/app_theme.dart';
+import 'package:days_in_hk/shared/widgets/app_haptics.dart';
 
 class MemoryRepository implements StayRecordRepository {
   MemoryRepository(this.records);
@@ -87,23 +89,20 @@ void main() {
   ) async {
     var openedSettings = false;
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: DashboardPage(
-            records: const [],
-            statisticsService: StayStatisticsService(),
-            locationPermissionStatus:
-                AppLocationPermissionStatus.whileInUseOnly,
-            today: DateTime(2026, 6, 16),
-            onManualEntry: () {},
-            onOpenSettings: () async => openedSettings = true,
-          ),
+      _TestHost(
+        child: DashboardPage(
+          records: const [],
+          statisticsService: StayStatisticsService(),
+          locationPermissionStatus: AppLocationPermissionStatus.whileInUseOnly,
+          today: DateTime(2026, 6, 16),
+          onManualEntry: () {},
+          onOpenSettings: () async => openedSettings = true,
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    final settingsPrompt = find.widgetWithText(TextButton, '去设置');
+    final settingsPrompt = find.text('去设置');
     await tester.ensureVisible(settingsPrompt);
     await tester.tap(settingsPrompt);
     await tester.pumpAndSettle();
@@ -130,26 +129,24 @@ void main() {
     ];
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: RecordsPage(
-            records: records,
-            onSave: (_) async {},
-            onDelete: (_) async {},
-          ),
+      _TestHost(
+        child: RecordsPage(
+          records: records,
+          onSave: (_) async {},
+          onDelete: (_) async {},
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.tap(find.byIcon(CupertinoIcons.ellipsis_circle));
     await tester.pumpAndSettle();
     await tester.tap(find.text('编辑 / 修正'));
     await tester.pumpAndSettle();
 
     expect(find.text('编辑记录'), findsOneWidget);
     expect(find.text('口岸 / 地点'), findsOneWidget);
-    final locationField = tester.widget<TextField>(
+    final locationField = tester.widget<CupertinoTextField>(
       find.byKey(const Key('record-edit-location-field')),
     );
     expect(locationField.controller?.text, '香港国际机场');
@@ -173,13 +170,11 @@ void main() {
     ];
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: StatisticsPage(
-            records: records,
-            statisticsService: StayStatisticsService(),
-            today: now,
-          ),
+      _TestHost(
+        child: StatisticsPage(
+          records: records,
+          statisticsService: StayStatisticsService(),
+          today: now,
         ),
       ),
     );
@@ -207,16 +202,14 @@ void main() {
     ];
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: DashboardPage(
-            records: records,
-            statisticsService: StayStatisticsService(),
-            locationPermissionStatus: AppLocationPermissionStatus.ready,
-            today: now,
-            onManualEntry: () {},
-            onOpenSettings: () async {},
-          ),
+      _TestHost(
+        child: DashboardPage(
+          records: records,
+          statisticsService: StayStatisticsService(),
+          locationPermissionStatus: AppLocationPermissionStatus.ready,
+          today: now,
+          onManualEntry: () {},
+          onOpenSettings: () async {},
         ),
       ),
     );
@@ -227,6 +220,87 @@ void main() {
     expect(find.text('最近离港 2027-01-10'), findsNothing);
     expect(find.text('定位权限：受限'), findsNothing);
   });
+
+  testWidgets('Dashboard uses dark dynamic background in dark mode', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _TestHost(
+        brightness: Brightness.dark,
+        child: DashboardPage(
+          records: const [],
+          statisticsService: StayStatisticsService(),
+          locationPermissionStatus: AppLocationPermissionStatus.ready,
+          today: DateTime(2026, 6, 16),
+          onManualEntry: () {},
+          onOpenSettings: () async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scaffold = tester.widget<CupertinoPageScaffold>(
+      find.byType(CupertinoPageScaffold).first,
+    );
+    expect(
+      scaffold.backgroundColor.toString(),
+      contains('darkColor = Color(alpha: 1.0000, red: 0.0431'),
+    );
+  });
+
+  testWidgets('Haptics respect reduce motion media settings', (tester) async {
+    await tester.pumpWidget(
+      _TestHost(
+        disableAnimations: true,
+        accessibleNavigation: true,
+        child: Builder(
+          builder: (context) => CupertinoButton(
+            onPressed: () => AppHaptics.selection(context),
+            child: const Text('Tap'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Tap'));
+    await tester.pump();
+
+    expect(find.text('Tap'), findsOneWidget);
+  });
+}
+
+class _TestHost extends StatelessWidget {
+  const _TestHost({
+    required this.child,
+    this.brightness,
+    this.disableAnimations = false,
+    this.accessibleNavigation = false,
+  });
+
+  final Widget child;
+  final Brightness? brightness;
+  final bool disableAnimations;
+  final bool accessibleNavigation;
+
+  @override
+  Widget build(BuildContext context) {
+    return MediaQuery(
+      data: MediaQueryData(
+        size: const Size(390, 844),
+        devicePixelRatio: 1,
+        platformBrightness: brightness ?? Brightness.light,
+        disableAnimations: disableAnimations,
+        accessibleNavigation: accessibleNavigation,
+      ),
+      child: CupertinoApp(
+        theme: buildCupertinoAppTheme(),
+        localizationsDelegates: const [
+          DefaultCupertinoLocalizations.delegate,
+          DefaultWidgetsLocalizations.delegate,
+        ],
+        home: child,
+      ),
+    );
+  }
 }
 
 final boundary = HkBoundaryService.fromGeoJson(const {

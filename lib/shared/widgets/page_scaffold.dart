@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+
+import '../theme/app_theme.dart';
 
 class AppPage extends StatelessWidget {
   const AppPage({
@@ -16,42 +18,45 @@ class AppPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
+    return CupertinoPageScaffold(
+      backgroundColor: context.appColor(AppColors.background),
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: Text(title),
+            trailing: trailing,
+            backgroundColor: context
+                .appColor(AppColors.background)
+                .withValues(alpha: 0.86),
+            border: null,
+          ),
+          SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 96),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        title,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleLarge?.copyWith(fontSize: 22),
-                      ),
                       if (subtitle != null) ...[
-                        const SizedBox(height: 4),
                         Text(
                           subtitle!,
-                          style: Theme.of(context).textTheme.bodySmall,
+                          style: TextStyle(color: context.appColor(AppColors.muted)),
                         ),
+                        const SizedBox(height: 16),
                       ],
+                      ...children,
                     ],
                   ),
                 ),
-                ?trailing,
-              ],
+              ),
             ),
-            const SizedBox(height: 18),
-            ...children,
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

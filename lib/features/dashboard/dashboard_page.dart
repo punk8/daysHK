@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
@@ -7,6 +7,7 @@ import '../../location/permissions/location_permission_status.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/badges.dart';
+import '../../shared/widgets/cupertino_controls.dart';
 import '../../shared/widgets/page_scaffold.dart';
 
 class DashboardPage extends StatelessWidget {
@@ -42,10 +43,15 @@ class DashboardPage extends StatelessWidget {
     return AppPage(
       title: '在港日记',
       subtitle: '按香港自然日统计',
-      trailing: IconButton(
-        tooltip: '通知',
+      trailing: CupertinoButton(
+        minimumSize: const Size(36, 36),
+        padding: EdgeInsets.zero,
         onPressed: () {},
-        icon: const Icon(Icons.notifications_none),
+        child: Icon(
+          CupertinoIcons.bell,
+          color: context.appColor(AppColors.ink),
+          semanticLabel: '通知',
+        ),
       ),
       children: [
         AppCard(
@@ -60,7 +66,7 @@ class DashboardPage extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       current.title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      style: AppTextStyles.title.copyWith(
                         color: AppColors.teal,
                         fontSize: 22,
                       ),
@@ -70,13 +76,21 @@ class DashboardPage extends StatelessWidget {
                   ],
                 ),
               ),
-              CircleAvatar(
-                radius: 34,
-                backgroundColor: AppColors.teal.withValues(alpha: 0.12),
-                child: const Icon(
-                  Icons.location_city,
-                  color: AppColors.teal,
-                  size: 34,
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: context
+                      .appColor(AppColors.teal)
+                      .withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const SizedBox(
+                  width: 68,
+                  height: 68,
+                  child: Icon(
+                    CupertinoIcons.building_2_fill,
+                    color: AppColors.teal,
+                    size: 34,
+                  ),
                 ),
               ),
             ],
@@ -100,7 +114,7 @@ class DashboardPage extends StatelessWidget {
                     const SizedBox(height: 12),
                     RichText(
                       text: TextSpan(
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: context.appTextStyle(AppTextStyles.body),
                         children: [
                           TextSpan(
                             text: '${summary.estimatedStayDays}',
@@ -121,7 +135,7 @@ class DashboardPage extends StatelessWidget {
               Container(
                 width: 1,
                 height: 130,
-                color: AppColors.border,
+                color: context.appColor(AppColors.border),
                 margin: const EdgeInsets.symmetric(horizontal: 12),
               ),
               SizedBox(
@@ -132,7 +146,11 @@ class DashboardPage extends StatelessWidget {
                     const Text('当前连续在港'),
                     const SizedBox(height: 6),
                     _SideMetric(value: current.continuousDays, unit: '天'),
-                    const Divider(height: 28),
+                    Container(
+                      height: 1,
+                      margin: const EdgeInsets.symmetric(vertical: 14),
+                      color: context.appColor(AppColors.border),
+                    ),
                     const Text('最长连续在港'),
                     const SizedBox(height: 6),
                     _SideMetric(value: longest, unit: '天'),
@@ -156,13 +174,20 @@ class DashboardPage extends StatelessWidget {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        CircleAvatar(
-                          backgroundColor: AppColors.teal,
-                          child: Icon(
-                            latest.exitDate == null
-                                ? Icons.login
-                                : Icons.compare_arrows,
-                            color: Colors.white,
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: context.appColor(AppColors.teal),
+                            shape: BoxShape.circle,
+                          ),
+                          child: SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Icon(
+                              latest.exitDate == null
+                                  ? CupertinoIcons.arrow_down_left
+                                  : CupertinoIcons.arrow_right_arrow_left,
+                              color: CupertinoColors.white,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -197,7 +222,10 @@ class DashboardPage extends StatelessWidget {
             color: AppColors.warning,
             child: Row(
               children: [
-                const Icon(Icons.location_off_outlined, color: Colors.orange),
+                const Icon(
+                  CupertinoIcons.location_slash,
+                  color: CupertinoColors.systemOrange,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -212,7 +240,8 @@ class DashboardPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                TextButton(
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   onPressed: onOpenSettings,
                   child: const Text('去设置'),
                 ),
@@ -221,10 +250,10 @@ class DashboardPage extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 14),
-        FilledButton.icon(
+        AppCupertinoButton(
+          label: '手动补录',
+          icon: CupertinoIcons.plus_circle,
           onPressed: onManualEntry,
-          icon: const Icon(Icons.add_circle_outline),
-          label: const Text('手动补录'),
         ),
       ],
     );
@@ -309,7 +338,7 @@ class _SideMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichText(
       text: TextSpan(
-        style: Theme.of(context).textTheme.bodyMedium,
+        style: context.appTextStyle(AppTextStyles.body),
         children: [
           TextSpan(
             text: '$value',
