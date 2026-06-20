@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-import '../../data/exports/csv_exporter.dart';
 import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
 import '../../location/geofence/location_detection_service.dart';
 import '../../location/geofence/native_geofence_bridge.dart';
-import '../../location/boundary/hk_boundary_service.dart';
 import '../../location/permissions/location_permission_service.dart';
 import '../../location/permissions/location_permission_status.dart';
 import '../../shared/theme/app_theme.dart';
@@ -17,25 +14,23 @@ class SettingsPage extends StatelessWidget {
   const SettingsPage({
     super.key,
     required this.records,
-    required this.boundary,
     required this.locationDetection,
     required this.locationPermission,
     required this.nativeGeofence,
-    required this.exporter,
-    required this.today,
     required this.onSaveCandidate,
     required this.onClearAll,
+    required this.onShowRecords,
+    required this.onExport,
   });
 
   final List<StayRecord> records;
-  final HkBoundaryService boundary;
   final LocationDetectionService locationDetection;
   final LocationPermissionService locationPermission;
   final NativeGeofenceBridge nativeGeofence;
-  final CsvExporter exporter;
-  final DateTime today;
   final Future<void> Function(StayRecord record) onSaveCandidate;
   final Future<void> Function() onClearAll;
+  final VoidCallback onShowRecords;
+  final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +43,7 @@ class SettingsPage extends StatelessWidget {
             locationDetection: locationDetection,
             locationPermission: locationPermission,
             onSaveCandidate: onSaveCandidate,
+            onShowRecords: onShowRecords,
           ),
         ),
         const SizedBox(height: 12),
@@ -67,8 +63,6 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        AppCard(child: _BoundarySelfCheck(boundary: boundary)),
-        const SizedBox(height: 12),
         AppCard(
           child: Column(
             children: [
@@ -76,36 +70,7 @@ class SettingsPage extends StatelessWidget {
                 icon: Icons.ios_share_outlined,
                 title: '导出记录（CSV）',
                 subtitle: '导出全部入离港记录',
-                onTap: () async {
-                  final csv = exporter.export(records, today);
-                  var copied = false;
-                  try {
-                    await Clipboard.setData(ClipboardData(text: csv));
-                    copied = true;
-                  } on PlatformException {
-                    copied = false;
-                  }
-                  if (context.mounted) {
-                    showDialog<void>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text(copied ? 'CSV 已复制' : 'CSV 记录'),
-                        content: SizedBox(
-                          width: 480,
-                          child: SingleChildScrollView(
-                            child: SelectableText(csv),
-                          ),
-                        ),
-                        actions: [
-                          FilledButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('完成'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                },
+                onTap: onExport,
               ),
               const Divider(),
               _SettingsTile(
@@ -177,42 +142,6 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-class _BoundarySelfCheck extends StatelessWidget {
-  const _BoundarySelfCheck({required this.boundary});
-
-  final HkBoundaryService boundary;
-
-  @override
-  Widget build(BuildContext context) {
-    final central = boundary.classify(longitude: 114.1588, latitude: 22.2819);
-    final shenzhen = boundary.classify(longitude: 114.0579, latitude: 22.5431);
-    final lowAccuracy = boundary.classify(
-      longitude: 114.1588,
-      latitude: 22.2819,
-      accuracyMeters: 10000,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.polyline_outlined),
-          title: Text('香港边界判断', style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: Text('已内置香港政府 18 区边界数据，支持离线判断。'),
-        ),
-        const Divider(),
-        _BoundaryCheckRow(label: '中环', value: central.classification.label),
-        _BoundaryCheckRow(label: '深圳市区', value: shenzhen.classification.label),
-        _BoundaryCheckRow(
-          label: '低精度定位',
-          value: lowAccuracy.classification.label,
-        ),
-      ],
-    );
-  }
-}
-
 class _NativeGeofenceCard extends StatefulWidget {
   const _NativeGeofenceCard({
     required this.records,
@@ -243,6 +172,7 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isRunning = _state.status == NativeGeofenceStatus.running;
     final statusLabel = switch (_state.status) {
       NativeGeofenceStatus.ready => '已准备',
       NativeGeofenceStatus.running => '运行中',
@@ -250,6 +180,7 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
       NativeGeofenceStatus.unsupported => '不支持',
       NativeGeofenceStatus.unavailable => '不可用',
     };
+    final statusMessage = isRunning ? null : _state.message;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -260,7 +191,7 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
             '后台自动检测',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
-          subtitle: Text(_state.message),
+          subtitle: statusMessage == null ? null : Text(statusMessage),
           trailing: Text(
             statusLabel,
             style: const TextStyle(
@@ -288,16 +219,18 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
               icon: const Icon(Icons.refresh),
               label: const Text('刷新状态'),
             ),
-            FilledButton.icon(
-              onPressed: _isBusy ? null : _start,
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('启动检测'),
-            ),
-            OutlinedButton.icon(
-              onPressed: _isBusy ? null : _stop,
-              icon: const Icon(Icons.stop),
-              label: const Text('停止'),
-            ),
+            if (!isRunning)
+              FilledButton.icon(
+                onPressed: _isBusy ? null : _start,
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('启动检测'),
+              ),
+            if (isRunning)
+              OutlinedButton.icon(
+                onPressed: _isBusy ? null : _stop,
+                icon: const Icon(Icons.stop),
+                label: const Text('停止'),
+              ),
           ],
         ),
       ],
@@ -309,7 +242,37 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
   }
 
   Future<void> _start() async {
-    await _run(widget.nativeGeofence.startMonitoring);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('开启后台自动检测'),
+        content: const Text(
+          '后台自动检测需要“始终允许”定位权限。系统可能会先询问定位授权；授权后请再次点击启动检测完成开启。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('继续'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    await _run(() async {
+      final authorizationState =
+          await widget.nativeGeofence.requestAlwaysAuthorization();
+      if (authorizationState.status != NativeGeofenceStatus.ready) {
+        return authorizationState;
+      }
+      return widget.nativeGeofence.startMonitoring();
+    });
   }
 
   Future<void> _stop() async {
@@ -318,14 +281,27 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
 
   Future<void> _run(Future<NativeGeofenceState> Function() action) async {
     setState(() => _isBusy = true);
-    final state = await action();
-    if (!mounted) {
-      return;
+    try {
+      final state = await action().timeout(const Duration(seconds: 8));
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _state = state;
+        _isBusy = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _state = const NativeGeofenceState(
+          status: NativeGeofenceStatus.unavailable,
+          message: '后台检测请求超时，请确认定位权限后重试。',
+        );
+        _isBusy = false;
+      });
     }
-    setState(() {
-      _state = state;
-      _isBusy = false;
-    });
   }
 
   Future<void> _createCandidateFromNativeEvent(
@@ -460,12 +436,14 @@ class _LocationDetectionCard extends StatefulWidget {
     required this.locationDetection,
     required this.locationPermission,
     required this.onSaveCandidate,
+    required this.onShowRecords,
   });
 
   final List<StayRecord> records;
   final LocationDetectionService locationDetection;
   final LocationPermissionService locationPermission;
   final Future<void> Function(StayRecord record) onSaveCandidate;
+  final VoidCallback onShowRecords;
 
   @override
   State<_LocationDetectionCard> createState() => _LocationDetectionCardState();
@@ -473,7 +451,15 @@ class _LocationDetectionCard extends StatefulWidget {
 
 class _LocationDetectionCardState extends State<_LocationDetectionCard> {
   String _status = '建议开启“始终允许”，以获得更准确的出入境记录。';
+  AppLocationPermissionStatus _permissionStatus =
+      AppLocationPermissionStatus.unknown;
   bool _isBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermission();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -488,9 +474,12 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
           subtitle: Text(_status),
-          trailing: const Text(
-            '受限',
-            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w700),
+          trailing: Text(
+            _permissionLabel,
+            style: TextStyle(
+              color: _permissionColor,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -510,39 +499,6 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
             ),
           ],
         ),
-        const Divider(height: 26),
-        const Text('模拟检测', style: TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton(
-              onPressed: () => _simulate(
-                longitude: 114.1588,
-                latitude: 22.2819,
-                accuracyMeters: 15,
-              ),
-              child: const Text('中环'),
-            ),
-            OutlinedButton(
-              onPressed: () => _simulate(
-                longitude: 114.0579,
-                latitude: 22.5431,
-                accuracyMeters: 15,
-              ),
-              child: const Text('深圳市区'),
-            ),
-            OutlinedButton(
-              onPressed: () => _simulate(
-                longitude: 114.1588,
-                latitude: 22.2819,
-                accuracyMeters: 10000,
-              ),
-              child: const Text('低精度'),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -555,6 +511,7 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
     }
     setState(() {
       _status = status.message;
+      _permissionStatus = status;
       _isBusy = false;
     });
   }
@@ -570,6 +527,7 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
           status != AppLocationPermissionStatus.whileInUseOnly) {
         setState(() {
           _status = status.message;
+          _permissionStatus = status;
           _isBusy = false;
         });
         return;
@@ -583,24 +541,33 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
         return;
       }
       setState(() {
-        _status = '无法读取当前位置，可先使用模拟检测或手动补录。';
+        _status = '无法读取当前位置，请稍后重试或先手动补录。';
+        _permissionStatus = AppLocationPermissionStatus.unknown;
         _isBusy = false;
       });
     }
   }
 
-  Future<void> _simulate({
-    required double longitude,
-    required double latitude,
-    required double accuracyMeters,
-  }) async {
-    final result = widget.locationDetection.detectCoordinate(
-      existingRecords: widget.records,
-      longitude: longitude,
-      latitude: latitude,
-      accuracyMeters: accuracyMeters,
-    );
-    await _handleDetectionResult(result);
+  String get _permissionLabel {
+    return switch (_permissionStatus) {
+      AppLocationPermissionStatus.ready => '正常',
+      AppLocationPermissionStatus.whileInUseOnly => '受限',
+      AppLocationPermissionStatus.serviceDisabled => '关闭',
+      AppLocationPermissionStatus.denied ||
+      AppLocationPermissionStatus.deniedForever => '未授权',
+      AppLocationPermissionStatus.unknown => '未知',
+    };
+  }
+
+  Color get _permissionColor {
+    return switch (_permissionStatus) {
+      AppLocationPermissionStatus.ready => AppColors.teal,
+      AppLocationPermissionStatus.whileInUseOnly ||
+      AppLocationPermissionStatus.serviceDisabled ||
+      AppLocationPermissionStatus.unknown => Colors.orange,
+      AppLocationPermissionStatus.denied ||
+      AppLocationPermissionStatus.deniedForever => AppColors.red,
+    };
   }
 
   Future<void> _handleDetectionResult(LocationDetectionResult result) async {
@@ -617,33 +584,12 @@ class _LocationDetectionCardState extends State<_LocationDetectionCard> {
           : '检测结果：${result.boundaryResult.classification.label}，已生成需要确认的候选记录。';
       _isBusy = false;
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(_status)));
-  }
-}
-
-class _BoundaryCheckRow extends StatelessWidget {
-  const _BoundaryCheckRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(child: Text(label)),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.teal,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_status),
+        action: candidate == null
+            ? null
+            : SnackBarAction(label: '查看记录', onPressed: widget.onShowRecords),
       ),
     );
   }

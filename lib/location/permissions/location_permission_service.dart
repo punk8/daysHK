@@ -23,6 +23,10 @@ class LocationPermissionService {
     return _map(permission);
   }
 
+  Future<bool> openSystemSettings() {
+    return Geolocator.openAppSettings();
+  }
+
   AppLocationPermissionStatus _map(LocationPermission permission) {
     return switch (permission) {
       LocationPermission.always => AppLocationPermissionStatus.ready,

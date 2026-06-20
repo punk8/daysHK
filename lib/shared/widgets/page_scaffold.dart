@@ -20,7 +20,7 @@ class AppPage extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,

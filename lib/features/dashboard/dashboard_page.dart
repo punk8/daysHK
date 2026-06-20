@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
 import '../../domain/services/stay_statistics_service.dart';
+import '../../location/permissions/location_permission_status.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/badges.dart';
@@ -13,14 +14,18 @@ class DashboardPage extends StatelessWidget {
     super.key,
     required this.records,
     required this.statisticsService,
+    required this.locationPermissionStatus,
     required this.today,
     required this.onManualEntry,
+    required this.onOpenSettings,
   });
 
   final List<StayRecord> records;
   final StayStatisticsService statisticsService;
+  final AppLocationPermissionStatus locationPermissionStatus;
   final DateTime today;
   final VoidCallback onManualEntry;
+  final Future<void> Function() onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -186,30 +191,35 @@ class DashboardPage extends StatelessWidget {
                   ],
                 ),
         ),
-        const SizedBox(height: 14),
-        AppCard(
-          color: AppColors.warning,
-          child: Row(
-            children: [
-              const Icon(Icons.location_off_outlined, color: Colors.orange),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '定位权限：受限',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    SizedBox(height: 4),
-                    Text('建议开启“始终允许”，以获得更准确的自动记录。'),
-                  ],
+        if (locationPermissionStatus != AppLocationPermissionStatus.ready) ...[
+          const SizedBox(height: 14),
+          AppCard(
+            color: AppColors.warning,
+            child: Row(
+              children: [
+                const Icon(Icons.location_off_outlined, color: Colors.orange),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _permissionTitle,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(_permissionMessage),
+                    ],
+                  ),
                 ),
-              ),
-              TextButton(onPressed: () {}, child: const Text('去设置')),
-            ],
+                TextButton(
+                  onPressed: onOpenSettings,
+                  child: const Text('去设置'),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
         const SizedBox(height: 14),
         FilledButton.icon(
           onPressed: onManualEntry,
@@ -218,6 +228,28 @@ class DashboardPage extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String get _permissionTitle {
+    return switch (locationPermissionStatus) {
+      AppLocationPermissionStatus.serviceDisabled => '定位服务：关闭',
+      AppLocationPermissionStatus.denied ||
+      AppLocationPermissionStatus.deniedForever => '定位权限：未授权',
+      AppLocationPermissionStatus.whileInUseOnly => '定位权限：受限',
+      AppLocationPermissionStatus.unknown => '定位权限：未知',
+      AppLocationPermissionStatus.ready => '定位权限：正常',
+    };
+  }
+
+  String get _permissionMessage {
+    return switch (locationPermissionStatus) {
+      AppLocationPermissionStatus.serviceDisabled => '请开启 iOS 定位服务后再使用自动记录。',
+      AppLocationPermissionStatus.denied ||
+      AppLocationPermissionStatus.deniedForever => '请在系统设置中允许定位权限。',
+      AppLocationPermissionStatus.whileInUseOnly => '建议开启“始终允许”，以获得更准确的自动记录。',
+      AppLocationPermissionStatus.unknown => '建议检查定位权限，以确认自动记录可用。',
+      AppLocationPermissionStatus.ready => '定位记录已准备就绪。',
+    };
   }
 
   _Presence _currentPresence(List<StayRecord> records) {

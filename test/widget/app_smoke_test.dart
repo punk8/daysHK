@@ -8,6 +8,7 @@ import 'package:days_in_hk/location/boundary/hk_boundary_service.dart';
 import 'package:days_in_hk/location/geofence/location_detection_service.dart';
 import 'package:days_in_hk/location/geofence/native_geofence_bridge.dart';
 import 'package:days_in_hk/location/permissions/location_permission_service.dart';
+import 'package:days_in_hk/location/permissions/location_permission_status.dart';
 import 'package:days_in_hk/features/records/records_page.dart';
 import 'package:days_in_hk/features/statistics/statistics_page.dart';
 import 'package:days_in_hk/domain/services/stay_statistics_service.dart';
@@ -36,6 +37,21 @@ class MemoryRepository implements StayRecordRepository {
   }
 }
 
+class FakeLocationPermissionService extends LocationPermissionService {
+  FakeLocationPermissionService(this.status);
+
+  final AppLocationPermissionStatus status;
+
+  @override
+  Future<AppLocationPermissionStatus> checkStatus() async => status;
+
+  @override
+  Future<AppLocationPermissionStatus> requestPermission() async => status;
+
+  @override
+  Future<bool> openSystemSettings() async => true;
+}
+
 void main() {
   testWidgets('App shows dashboard and manual entry tab', (tester) async {
     await tester.pumpWidget(
@@ -44,7 +60,9 @@ void main() {
           records: MemoryRepository([]),
           boundary: boundary,
           locationDetection: LocationDetectionService(boundary),
-          locationPermission: LocationPermissionService(),
+          locationPermission: FakeLocationPermissionService(
+            AppLocationPermissionStatus.ready,
+          ),
           nativeGeofence: const NativeGeofenceBridge(),
         ),
       ),
@@ -62,6 +80,35 @@ void main() {
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
     await tester.pumpAndSettle();
     expect(find.text('保存记录'), findsOneWidget);
+  });
+
+  testWidgets('Dashboard settings prompt calls settings action', (
+    tester,
+  ) async {
+    var openedSettings = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DashboardPage(
+            records: const [],
+            statisticsService: StayStatisticsService(),
+            locationPermissionStatus:
+                AppLocationPermissionStatus.whileInUseOnly,
+            today: DateTime(2026, 6, 16),
+            onManualEntry: () {},
+            onOpenSettings: () async => openedSettings = true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final settingsPrompt = find.widgetWithText(TextButton, '去设置');
+    await tester.ensureVisible(settingsPrompt);
+    await tester.tap(settingsPrompt);
+    await tester.pumpAndSettle();
+
+    expect(openedSettings, isTrue);
   });
 
   testWidgets('Records page can open edit dialog', (tester) async {
@@ -89,6 +136,7 @@ void main() {
             records: records,
             onSave: (_) async {},
             onDelete: (_) async {},
+            onExport: () {},
           ),
         ),
       ),
@@ -165,8 +213,10 @@ void main() {
           body: DashboardPage(
             records: records,
             statisticsService: StayStatisticsService(),
+            locationPermissionStatus: AppLocationPermissionStatus.ready,
             today: now,
             onManualEntry: () {},
+            onOpenSettings: () async {},
           ),
         ),
       ),
@@ -176,6 +226,7 @@ void main() {
     expect(find.text('当前不在香港'), findsOneWidget);
     expect(find.text('暂无入港记录'), findsWidgets);
     expect(find.text('最近离港 2027-01-10'), findsNothing);
+    expect(find.text('定位权限：受限'), findsNothing);
   });
 }
 

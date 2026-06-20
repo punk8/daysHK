@@ -3,7 +3,23 @@ import CoreLocation
 import UIKit
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, CLLocationManagerDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    DaysHKGeofenceChannel.shared.configure(messenger: engineBridge.applicationRegistrar.messenger())
+  }
+}
+
+final class DaysHKGeofenceChannel: NSObject, CLLocationManagerDelegate {
+  static let shared = DaysHKGeofenceChannel()
+
   private let geofenceChannelName = "days_in_hk/geofence"
   private let geofenceIdentifier = "hk_boundary_wakeup"
   private let locationManager = CLLocationManager()
@@ -14,28 +30,21 @@ import UIKit
   private let lastLatitudeKey = "days_in_hk.geofence.lastLatitude"
   private let lastLongitudeKey = "days_in_hk.geofence.lastLongitude"
 
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
+  private override init() {
+    super.init()
     locationManager.delegate = self
-    if let controller = window?.rootViewController as? FlutterViewController {
-      configureGeofenceChannel(controller.binaryMessenger)
-    }
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-  }
-
-  private func configureGeofenceChannel(_ messenger: FlutterBinaryMessenger) {
+  func configure(messenger: FlutterBinaryMessenger) {
+    NSLog("DaysHK geofence channel registered")
     let channel = FlutterMethodChannel(name: geofenceChannelName, binaryMessenger: messenger)
     channel.setMethodCallHandler { [weak self] call, result in
       guard let self else { return }
       switch call.method {
       case "getStatus":
         result(self.statusPayload())
+      case "requestAlwaysAuthorization":
+        self.requestAlwaysAuthorization(result)
       case "startMonitoring":
         self.startMonitoring(result)
       case "stopMonitoring":
@@ -44,6 +53,28 @@ import UIKit
         result(FlutterMethodNotImplemented)
       }
     }
+  }
+
+  private func requestAlwaysAuthorization(_ result: FlutterResult) {
+    if !CLLocationManager.locationServicesEnabled() {
+      result(statusPayload(status: "unavailable", message: "iOS 定位服务未开启。"))
+      return
+    }
+
+    let authorization = currentAuthorizationStatus()
+    NSLog("DaysHK geofence requestAlwaysAuthorization authorization=%d", authorization.rawValue)
+    if authorization == .authorizedAlways {
+      result(statusPayload(status: "ready", message: "已获得“始终允许”定位权限，可启动后台检测。"))
+      return
+    }
+
+    if authorization == .denied || authorization == .restricted {
+      result(statusPayload(status: "unavailable", message: "定位权限已被拒绝，请到系统设置中为在港日记开启“始终允许”。"))
+      return
+    }
+
+    locationManager.requestAlwaysAuthorization()
+    result(statusPayload(status: "unavailable", message: "已请求“始终允许”定位权限，请在系统弹窗中允许后再次启动后台检测。"))
   }
 
   private func startMonitoring(_ result: FlutterResult) {
@@ -58,8 +89,15 @@ import UIKit
     }
 
     let authorization = currentAuthorizationStatus()
+    NSLog(
+      "DaysHK geofence startMonitoring authorization=%d maxDistance=%f",
+      authorization.rawValue,
+      locationManager.maximumRegionMonitoringDistance
+    )
     if authorization == .notDetermined {
       locationManager.requestAlwaysAuthorization()
+      result(statusPayload(status: "unavailable", message: "请先在系统弹窗中允许“始终”定位权限，然后再次启动后台检测。"))
+      return
     } else if authorization != .authorizedAlways {
       result(statusPayload(status: "unavailable", message: "需要“始终允许”定位权限后才能启动 iOS 后台检测。"))
       return
@@ -79,6 +117,7 @@ import UIKit
     locationManager.pausesLocationUpdatesAutomatically = false
     locationManager.startMonitoring(for: region)
     defaults.set(true, forKey: monitoringStartedKey)
+    NSLog("DaysHK geofence startMonitoring requested radius=%f", region.radius)
 
     result(statusPayload(status: "running", message: "iOS region monitoring 已启动，等待系统 enter / exit 事件。"))
   }
@@ -176,16 +215,23 @@ import UIKit
 
   func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
     guard region.identifier == geofenceIdentifier else { return }
+    NSLog("DaysHK geofence didEnterRegion %@", region.identifier)
     saveLastEvent(transition: "enter", location: manager.location)
   }
 
   func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
     guard region.identifier == geofenceIdentifier else { return }
+    NSLog("DaysHK geofence didExitRegion %@", region.identifier)
     saveLastEvent(transition: "exit", location: manager.location)
   }
 
   func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
     guard region?.identifier == geofenceIdentifier else { return }
+    NSLog(
+      "DaysHK geofence monitoringDidFailFor %@: %@",
+      region?.identifier ?? "unknown",
+      error.localizedDescription
+    )
     defaults.set(false, forKey: monitoringStartedKey)
   }
 

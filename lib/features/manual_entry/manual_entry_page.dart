@@ -26,20 +26,10 @@ class ManualEntryPage extends StatefulWidget {
 }
 
 class _ManualEntryPageState extends State<ManualEntryPage> {
-  final _locationController = TextEditingController();
-  final _noteController = TextEditingController();
   late var _entryDate = normalizeDate(widget.today);
   late DateTime? _exitDate = normalizeDate(widget.today);
   var _sameDayRoundTrip = true;
-  String? _transportMode;
   String? _error;
-
-  @override
-  void dispose() {
-    _locationController.dispose();
-    _noteController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,15 +53,6 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
         icon: const Icon(Icons.info_outline),
       ),
       children: [
-        SegmentedButton<bool>(
-          segments: const [
-            ButtonSegment(value: true, label: Text('入港')),
-            ButtonSegment(value: false, label: Text('离港')),
-          ],
-          selected: const {true},
-          onSelectionChanged: (_) {},
-        ),
-        const SizedBox(height: 14),
         if (openRecord != null) ...[
           AppCard(
             color: AppColors.info,
@@ -136,43 +117,6 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: EdgeInsets.zero,
         ),
-        TextField(
-          controller: _locationController,
-          decoration: const InputDecoration(
-            labelText: '口岸 / 地点',
-            border: OutlineInputBorder(),
-            suffixIcon: Icon(Icons.place_outlined),
-          ),
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: _transportMode,
-          decoration: const InputDecoration(
-            labelText: '交通方式（可选）',
-            border: OutlineInputBorder(),
-          ),
-          items: const [
-            DropdownMenuItem(value: '', child: Text('未选择')),
-            DropdownMenuItem(value: '飞机', child: Text('飞机')),
-            DropdownMenuItem(value: '高铁', child: Text('高铁')),
-            DropdownMenuItem(value: '巴士', child: Text('巴士')),
-            DropdownMenuItem(value: '口岸步行', child: Text('口岸步行')),
-          ],
-          onChanged: (value) => setState(
-            () => _transportMode = value?.isEmpty == true ? null : value,
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _noteController,
-          maxLength: 100,
-          minLines: 2,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: '备注（可选）',
-            border: OutlineInputBorder(),
-          ),
-        ),
         const SizedBox(height: 6),
         AppCard(
           color: AppColors.info,
@@ -235,13 +179,6 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
       entryDate: normalizeDate(_entryDate),
       exitDate: _exitDate == null ? null : normalizeDate(_exitDate!),
       sameDayRoundTrip: _sameDayRoundTrip,
-      locationName: _locationController.text.trim().isEmpty
-          ? null
-          : _locationController.text.trim(),
-      transportMode: _transportMode,
-      note: _noteController.text.trim().isEmpty
-          ? null
-          : _noteController.text.trim(),
       source: RecordSource.manual,
       confirmationStatus: ConfirmationStatus.confirmed,
       createdAt: now,
@@ -255,6 +192,11 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
     );
     if (error != null) {
       setState(() => _error = error);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
+      }
       return;
     }
 

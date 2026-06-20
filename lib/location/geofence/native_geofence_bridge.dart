@@ -117,7 +117,7 @@ class NativeGeofenceBridge {
     if (kIsWeb) {
       return const NativeGeofenceState(
         status: NativeGeofenceStatus.unsupported,
-        message: 'Web 环境不支持原生后台检测，可使用模拟检测验收业务流程。',
+        message: 'Web 环境不支持原生后台检测，请在 iOS 设备或模拟器上验收业务流程。',
       );
     }
 
@@ -152,10 +152,41 @@ class NativeGeofenceBridge {
         'startMonitoring',
       );
       return NativeGeofenceState.fromMap(result ?? const {});
+    } on MissingPluginException {
+      return const NativeGeofenceState(
+        status: NativeGeofenceStatus.unavailable,
+        message: '原生后台检测通道尚未注册。',
+      );
     } on PlatformException catch (error) {
       return NativeGeofenceState(
         status: NativeGeofenceStatus.unavailable,
         message: error.message ?? '启动后台检测失败。',
+      );
+    }
+  }
+
+  Future<NativeGeofenceState> requestAlwaysAuthorization() async {
+    if (kIsWeb) {
+      return const NativeGeofenceState(
+        status: NativeGeofenceStatus.unsupported,
+        message: 'Web 环境不支持原生后台检测。',
+      );
+    }
+
+    try {
+      final result = await _channel.invokeMapMethod<String, Object?>(
+        'requestAlwaysAuthorization',
+      );
+      return NativeGeofenceState.fromMap(result ?? const {});
+    } on MissingPluginException {
+      return const NativeGeofenceState(
+        status: NativeGeofenceStatus.unavailable,
+        message: '原生后台检测通道尚未注册。',
+      );
+    } on PlatformException catch (error) {
+      return NativeGeofenceState(
+        status: NativeGeofenceStatus.unavailable,
+        message: error.message ?? '请求后台定位权限失败。',
       );
     }
   }
@@ -173,6 +204,11 @@ class NativeGeofenceBridge {
         'stopMonitoring',
       );
       return NativeGeofenceState.fromMap(result ?? const {});
+    } on MissingPluginException {
+      return const NativeGeofenceState(
+        status: NativeGeofenceStatus.unavailable,
+        message: '原生后台检测通道尚未注册。',
+      );
     } on PlatformException catch (error) {
       return NativeGeofenceState(
         status: NativeGeofenceStatus.unavailable,

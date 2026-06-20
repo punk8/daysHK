@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/bootstrap.dart';
 import '../../core/time/hk_date.dart';
 import '../../data/exports/csv_exporter.dart';
 import '../../domain/models/stay_record.dart';
 import '../../domain/services/stay_statistics_service.dart';
+import '../../location/permissions/location_permission_status.dart';
 import '../dashboard/dashboard_page.dart';
 import '../manual_entry/manual_entry_page.dart';
 import '../records/records_page.dart';
@@ -24,6 +26,7 @@ class _AppShellState extends State<AppShell> {
   final _statisticsService = StayStatisticsService();
   var _selectedIndex = 0;
   var _records = <StayRecord>[];
+  var _locationPermissionStatus = AppLocationPermissionStatus.unknown;
   var _isLoading = true;
 
   @override
@@ -34,8 +37,13 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _reload() async {
     final records = await widget.dependencies.records.listRecords();
+    final locationPermissionStatus = await widget
+        .dependencies
+        .locationPermission
+        .checkStatus();
     setState(() {
       _records = records;
+      _locationPermissionStatus = locationPermissionStatus;
       _isLoading = false;
     });
   }
@@ -55,6 +63,47 @@ class _AppShellState extends State<AppShell> {
     await _reload();
   }
 
+  Future<void> _showCsvExport() async {
+    final csv = CsvExporter(_statisticsService).export(_records, hkToday());
+    var copied = false;
+    try {
+      await Clipboard.setData(ClipboardData(text: csv));
+      copied = true;
+    } on PlatformException {
+      copied = false;
+    }
+    if (!mounted) {
+      return;
+    }
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(copied ? 'CSV 已复制' : 'CSV 记录'),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(child: SelectableText(csv)),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('完成'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openSystemSettings() async {
+    final opened = await widget.dependencies.locationPermission
+        .openSystemSettings();
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('无法打开系统设置，请手动前往 iOS 设置。')));
+    }
+    await _reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     final today = hkToday();
@@ -62,8 +111,10 @@ class _AppShellState extends State<AppShell> {
       DashboardPage(
         records: _records,
         statisticsService: _statisticsService,
+        locationPermissionStatus: _locationPermissionStatus,
         today: today,
         onManualEntry: () => setState(() => _selectedIndex = 3),
+        onOpenSettings: _openSystemSettings,
       ),
       StatisticsPage(
         records: _records,
@@ -74,6 +125,7 @@ class _AppShellState extends State<AppShell> {
         records: _records,
         onSave: _saveRecord,
         onDelete: _deleteRecord,
+        onExport: _showCsvExport,
       ),
       ManualEntryPage(
         records: _records,
@@ -86,14 +138,13 @@ class _AppShellState extends State<AppShell> {
       ),
       SettingsPage(
         records: _records,
-        boundary: widget.dependencies.boundary,
         locationDetection: widget.dependencies.locationDetection,
         locationPermission: widget.dependencies.locationPermission,
         nativeGeofence: widget.dependencies.nativeGeofence,
-        exporter: CsvExporter(_statisticsService),
-        today: today,
         onSaveCandidate: _saveRecord,
         onClearAll: _clearAll,
+        onShowRecords: () => setState(() => _selectedIndex = 2),
+        onExport: _showCsvExport,
       ),
     ];
 

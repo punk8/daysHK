@@ -7,56 +7,30 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/badges.dart';
 import '../../shared/widgets/page_scaffold.dart';
 
-enum RecordFilter { all, entry, exit }
-
-class RecordsPage extends StatefulWidget {
+class RecordsPage extends StatelessWidget {
   const RecordsPage({
     super.key,
     required this.records,
     required this.onSave,
     required this.onDelete,
+    required this.onExport,
   });
 
   final List<StayRecord> records;
   final Future<void> Function(StayRecord record) onSave;
   final Future<void> Function(String id) onDelete;
-
-  @override
-  State<RecordsPage> createState() => _RecordsPageState();
-}
-
-class _RecordsPageState extends State<RecordsPage> {
-  var _filter = RecordFilter.all;
+  final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context) {
-    final records = _applyFilter(widget.records);
     return AppPage(
       title: '入离港记录',
+      trailing: IconButton(
+        tooltip: '导出 CSV',
+        onPressed: onExport,
+        icon: const Icon(Icons.ios_share_outlined),
+      ),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: SegmentedButton<RecordFilter>(
-                segments: const [
-                  ButtonSegment(value: RecordFilter.all, label: Text('全部')),
-                  ButtonSegment(value: RecordFilter.entry, label: Text('入港')),
-                  ButtonSegment(value: RecordFilter.exit, label: Text('离港')),
-                ],
-                selected: {_filter},
-                onSelectionChanged: (selection) =>
-                    setState(() => _filter = selection.first),
-              ),
-            ),
-            const SizedBox(width: 10),
-            IconButton.filledTonal(
-              tooltip: '筛选',
-              onPressed: () {},
-              icon: const Icon(Icons.filter_list),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
         if (records.isEmpty)
           const AppCard(child: Text('暂无记录。可以先去“补录”添加一条记录。'))
         else
@@ -71,23 +45,13 @@ class _RecordsPageState extends State<RecordsPage> {
             for (final record in group.value)
               _RecordTile(
                 record: record,
-                onSave: widget.onSave,
-                onDelete: widget.onDelete,
+                onSave: onSave,
+                onDelete: onDelete,
               ),
             const SizedBox(height: 8),
           ],
       ],
     );
-  }
-
-  List<StayRecord> _applyFilter(List<StayRecord> records) {
-    if (_filter == RecordFilter.entry) {
-      return records;
-    }
-    if (_filter == RecordFilter.exit) {
-      return records.where((record) => record.exitDate != null).toList();
-    }
-    return records;
   }
 
   Map<String, List<StayRecord>> _groupByMonth(List<StayRecord> records) {
