@@ -47,45 +47,7 @@ class StayStatisticsService {
       year: year,
       estimatedStayDays: estimatedStayDays,
       monthlyCounts: monthlyCounts,
-      absenceAlerts: findContinuousAbsenceAlerts(records),
     );
-  }
-
-  List<AbsenceAlert> findContinuousAbsenceAlerts(
-    List<StayRecord> records, {
-    int thresholdDays = 183,
-  }) {
-    final activeRecords =
-        records
-            .where(
-              (record) =>
-                  record.confirmationStatus != ConfirmationStatus.rejected,
-            )
-            .toList()
-          ..sort((a, b) => a.entryDate.compareTo(b.entryDate));
-
-    final alerts = <AbsenceAlert>[];
-    for (var index = 0; index < activeRecords.length - 1; index++) {
-      final previous = activeRecords[index];
-      final next = activeRecords[index + 1];
-      final exitDate = previous.exitDate;
-      if (exitDate == null) {
-        continue;
-      }
-
-      final start = normalizeDate(exitDate).add(const Duration(days: 1));
-      final end = normalizeDate(
-        next.entryDate,
-      ).subtract(const Duration(days: 1));
-      if (end.isBefore(start)) {
-        continue;
-      }
-      final days = inclusiveDateCount(start, end);
-      if (days >= thresholdDays) {
-        alerts.add(AbsenceAlert(startDate: start, endDate: end, days: days));
-      }
-    }
-    return alerts;
   }
 
   String? validateRecord(

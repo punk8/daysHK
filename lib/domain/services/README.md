@@ -6,7 +6,6 @@
 
 - 估算在港天数。
 - 年度 / 月度统计。
-- 连续离港提醒。
 - 记录冲突检测。
 - 需要确认状态判断。
 
@@ -37,33 +36,9 @@ function buildAnnualSummary(records, year, todayHkDate):
   for date in datesInYear:
     monthlyCounts[date.month] += 1
 
-  absenceAlerts = findContinuousAbsenceAlerts(records, thresholdMonths = 6)
-
   return AnnualStaySummary(
     year = year,
     estimatedStayDays = datesInYear.count,
-    monthlyCounts = monthlyCounts,
-    continuousAbsenceAlerts = absenceAlerts
+    monthlyCounts = monthlyCounts
   )
 ```
-
-## 连续离港伪代码
-
-```pseudo
-function findContinuousAbsenceAlerts(records, thresholdMonths):
-  sorted = records.sortBy(entryDate)
-  alerts = []
-
-  for each adjacent pair (previous, next):
-    if previous.exitDate is null:
-      continue
-
-    absenceStart = previous.exitDate.plusDays(1)
-    absenceEnd = next.entryDate.minusDays(1)
-
-    if absenceStart <= absenceEnd and monthsBetween(absenceStart, absenceEnd) >= thresholdMonths:
-      alerts.add(AbsenceAlert(absenceStart, absenceEnd))
-
-  return alerts
-```
-

@@ -68,8 +68,8 @@
 | --- | --- |
 | `lib/app/` | App 根组件、依赖装配、启动流程 |
 | `lib/core/` | 无业务依赖的通用时间、校验能力 |
-| `lib/domain/` | 记录模型、仓储接口、天数统计和风险提示规则 |
-| `lib/data/` | SQLite / Web 本地存储、CSV 导出、repository 实现 |
+| `lib/domain/` | 记录模型、仓储接口和天数统计规则 |
+| `lib/data/` | SQLite / Web 本地存储、repository 实现 |
 | `lib/features/` | 首页、统计、记录、补录、设置等用户可见功能 |
 | `lib/location/` | 香港边界、定位权限、自动检测、原生地理围栏桥接 |
 | `lib/shared/` | 主题和通用 UI 组件 |
@@ -163,16 +163,15 @@ confirmed = records.exclude(status = REJECTED)
 dates = enumerateInclusiveHkDates(confirmed)
 deduped = Set(dates)
 summary = groupByYearAndMonth(deduped)
-alerts = findAbsenceLongerThanSixMonths(confirmed)
 ```
 
 ## 开发顺序建议
 
-1. 继续稳定手动记录、统计、记录管理、CSV 导出。
+1. 继续稳定手动记录、统计和记录管理。
 2. 完善候选记录确认、修正和忽略流程。
 3. 完成 iOS / Android 原生地理围栏真实实现。
 4. 用真机验证后台定位、权限、系统唤醒和低电量行为。
-5. 增加更完整的导出报告、隐私文案和上架材料。
+5. 增加更完整的隐私文案和上架材料。
 
 ## 文档约定
 
@@ -182,4 +181,3 @@ alerts = findAbsenceLongerThanSixMonths(confirmed)
 - 不应该放什么。
 - 与其他模块如何交互。
 - 有必要时提供核心伪代码。
-

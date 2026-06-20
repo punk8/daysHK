@@ -108,15 +108,6 @@ void main() {
     expect(error, contains('2025-06-01 起仍在香港'));
   });
 
-  test('连续离港超过6个月产生提醒', () {
-    final alerts = service.findContinuousAbsenceAlerts([
-      record(id: '1', entry: DateTime(2025, 1, 1), exit: DateTime(2025, 1, 5)),
-      record(id: '2', entry: DateTime(2025, 8, 1), exit: DateTime(2025, 8, 3)),
-    ]);
-    expect(alerts, hasLength(1));
-    expect(alerts.first.days, greaterThanOrEqualTo(183));
-  });
-
   test('copyWith 可以清空可选字段', () {
     final original = record(
       id: '1',

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/time/hk_date.dart';
 import '../../domain/models/stay_record.dart';
 import '../../domain/services/stay_statistics_service.dart';
 import '../../shared/theme/app_theme.dart';
@@ -116,8 +115,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
               const Row(
                 children: [
                   _Legend(color: Color(0xFFE8EEF0), text: '0'),
-                  _Legend(color: Color(0xFF9DDADB), text: '1-10'),
-                  _Legend(color: Color(0xFF36B9BA), text: '11-20'),
+                  _Legend(color: Color(0xFFBFD0FF), text: '1-10'),
+                  _Legend(color: Color(0xFF6F95FF), text: '11-20'),
                   _Legend(color: AppColors.teal, text: '21-31'),
                 ],
               ),
@@ -125,49 +124,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
           ),
         ),
         const SizedBox(height: 14),
-        AppCard(
-          color: summary.absenceAlerts.isEmpty
-              ? AppColors.info
-              : const Color(0xFFFFF1F1),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                summary.absenceAlerts.isEmpty
-                    ? Icons.check_circle_outline
-                    : Icons.warning_amber_rounded,
-                color: summary.absenceAlerts.isEmpty
-                    ? AppColors.teal
-                    : AppColors.red,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '连续离港提醒',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      summary.absenceAlerts.isEmpty
-                          ? '暂未发现连续离港超过 6 个月的记录。'
-                          : '发现连续离港超过 6 个月的期间，可能需要解释或留证。',
-                    ),
-                    for (final alert in summary.absenceAlerts) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        '${dateKey(alert.startDate)} 至 ${dateKey(alert.endDate)}，共 ${alert.days} 天',
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
         const Text(
           '统计结果基于你的入离港记录估算，可能存在误差。',
           textAlign: TextAlign.center,
@@ -205,9 +161,9 @@ class _MonthBar extends StatelessWidget {
     final color = value == 0
         ? const Color(0xFFE8EEF0)
         : value <= 10
-        ? const Color(0xFF9DDADB)
+        ? const Color(0xFFBFD0FF)
         : value <= 20
-        ? const Color(0xFF36B9BA)
+        ? const Color(0xFF6F95FF)
         : AppColors.teal;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
