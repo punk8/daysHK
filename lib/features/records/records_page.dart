@@ -13,23 +13,16 @@ class RecordsPage extends StatelessWidget {
     required this.records,
     required this.onSave,
     required this.onDelete,
-    required this.onExport,
   });
 
   final List<StayRecord> records;
   final Future<void> Function(StayRecord record) onSave;
   final Future<void> Function(String id) onDelete;
-  final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context) {
     return AppPage(
       title: '入离港记录',
-      trailing: IconButton(
-        tooltip: '导出 CSV',
-        onPressed: onExport,
-        icon: const Icon(Icons.ios_share_outlined),
-      ),
       children: [
         if (records.isEmpty)
           const AppCard(child: Text('暂无记录。可以先去“补录”添加一条记录。'))

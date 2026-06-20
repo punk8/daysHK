@@ -136,7 +136,6 @@ void main() {
             records: records,
             onSave: (_) async {},
             onDelete: (_) async {},
-            onExport: () {},
           ),
         ),
       ),

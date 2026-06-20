@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../app/bootstrap.dart';
 import '../../core/time/hk_date.dart';
-import '../../data/exports/csv_exporter.dart';
 import '../../domain/models/stay_record.dart';
 import '../../domain/services/stay_statistics_service.dart';
 import '../../location/permissions/location_permission_status.dart';
@@ -63,36 +61,6 @@ class _AppShellState extends State<AppShell> {
     await _reload();
   }
 
-  Future<void> _showCsvExport() async {
-    final csv = CsvExporter(_statisticsService).export(_records, hkToday());
-    var copied = false;
-    try {
-      await Clipboard.setData(ClipboardData(text: csv));
-      copied = true;
-    } on PlatformException {
-      copied = false;
-    }
-    if (!mounted) {
-      return;
-    }
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(copied ? 'CSV 已复制' : 'CSV 记录'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(child: SelectableText(csv)),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('完成'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _openSystemSettings() async {
     final opened = await widget.dependencies.locationPermission
         .openSystemSettings();
@@ -125,7 +93,6 @@ class _AppShellState extends State<AppShell> {
         records: _records,
         onSave: _saveRecord,
         onDelete: _deleteRecord,
-        onExport: _showCsvExport,
       ),
       ManualEntryPage(
         records: _records,
@@ -144,7 +111,6 @@ class _AppShellState extends State<AppShell> {
         onSaveCandidate: _saveRecord,
         onClearAll: _clearAll,
         onShowRecords: () => setState(() => _selectedIndex = 2),
-        onExport: _showCsvExport,
       ),
     ];
 

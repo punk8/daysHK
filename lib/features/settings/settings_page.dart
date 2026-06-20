@@ -20,7 +20,6 @@ class SettingsPage extends StatelessWidget {
     required this.onSaveCandidate,
     required this.onClearAll,
     required this.onShowRecords,
-    required this.onExport,
   });
 
   final List<StayRecord> records;
@@ -30,7 +29,6 @@ class SettingsPage extends StatelessWidget {
   final Future<void> Function(StayRecord record) onSaveCandidate;
   final Future<void> Function() onClearAll;
   final VoidCallback onShowRecords;
-  final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context) {
@@ -66,13 +64,6 @@ class SettingsPage extends StatelessWidget {
         AppCard(
           child: Column(
             children: [
-              _SettingsTile(
-                icon: Icons.ios_share_outlined,
-                title: '导出记录（CSV）',
-                subtitle: '导出全部入离港记录',
-                onTap: onExport,
-              ),
-              const Divider(),
               _SettingsTile(
                 icon: Icons.delete_outline,
                 iconColor: AppColors.red,
