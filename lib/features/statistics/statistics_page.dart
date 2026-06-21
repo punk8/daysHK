@@ -193,6 +193,9 @@ class _AnnualSummaryMetric extends StatelessWidget {
 class _MonthBar extends StatelessWidget {
   const _MonthBar({required this.month, required this.value});
 
+  static const _monthLabelWidth = 48.0;
+  static const _valueLabelWidth = 56.0;
+
   final int month;
   final int value;
 
@@ -209,7 +212,19 @@ class _MonthBar extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          SizedBox(width: 32, child: Text('$month月')),
+          SizedBox(
+            width: _monthLabelWidth,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '$month月',
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.visible,
+              ),
+            ),
+          ),
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
@@ -235,7 +250,20 @@ class _MonthBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          SizedBox(width: 34, child: Text('$value天')),
+          SizedBox(
+            width: _valueLabelWidth,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                '$value天',
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.visible,
+                textAlign: TextAlign.end,
+              ),
+            ),
+          ),
         ],
       ),
     );

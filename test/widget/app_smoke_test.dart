@@ -592,6 +592,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Statistics monthly labels stay on one line in narrow layout', (
+    tester,
+  ) async {
+    final now = DateTime(2026, 6, 21);
+    await tester.pumpWidget(
+      _TestHost(
+        size: const Size(360, 780),
+        child: StatisticsPage(
+          records: [
+            StayRecord(
+              id: 'june-stay',
+              entryDate: DateTime(2026, 6, 1),
+              exitDate: DateTime(2026, 6, 21),
+              sameDayRoundTrip: false,
+              source: RecordSource.manual,
+              confirmationStatus: ConfirmationStatus.confirmed,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          ],
+          statisticsService: StayStatisticsService(),
+          today: now,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('10月'), findsOneWidget);
+    expect(find.text('11月'), findsOneWidget);
+    expect(find.text('12月'), findsOneWidget);
+    expect(find.text('21天'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Records confirmation actions stack for large text', (
     tester,
   ) async {
