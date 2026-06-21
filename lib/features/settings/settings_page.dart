@@ -54,6 +54,7 @@ class SettingsPage extends StatelessWidget {
         AppCard(
           child: _NativeGeofenceCard(
             records: records,
+            locationPermission: locationPermission,
             nativeGeofence: nativeGeofence,
             onSaveCandidate: onSaveCandidate,
           ),
@@ -190,11 +191,13 @@ Future<void> _pushSettingsDetail(
 class _NativeGeofenceCard extends StatefulWidget {
   const _NativeGeofenceCard({
     required this.records,
+    required this.locationPermission,
     required this.nativeGeofence,
     required this.onSaveCandidate,
   });
 
   final List<StayRecord> records;
+  final LocationPermissionService locationPermission;
   final NativeGeofenceBridge nativeGeofence;
   final Future<void> Function(StayRecord record) onSaveCandidate;
 
@@ -202,7 +205,8 @@ class _NativeGeofenceCard extends StatefulWidget {
   State<_NativeGeofenceCard> createState() => _NativeGeofenceCardState();
 }
 
-class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
+class _NativeGeofenceCardState extends State<_NativeGeofenceCard>
+    with WidgetsBindingObserver {
   NativeGeofenceState _state = const NativeGeofenceState(
     status: NativeGeofenceStatus.unavailable,
     message: '正在读取后台检测状态...',
@@ -212,21 +216,39 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refresh();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isRunning = _state.status == NativeGeofenceStatus.running;
+    final needsBackgroundPermission =
+        _state.status == NativeGeofenceStatus.needsBackgroundPermission;
     final statusLabel = switch (_state.status) {
       NativeGeofenceStatus.ready => '已准备',
       NativeGeofenceStatus.running => '运行中',
       NativeGeofenceStatus.stopped => '已停止',
+      NativeGeofenceStatus.needsBackgroundPermission => '需后台权限',
       NativeGeofenceStatus.unsupported => '不支持',
       NativeGeofenceStatus.unavailable => '不可用',
     };
     final statusMessage = switch (_state.status) {
       NativeGeofenceStatus.unsupported ||
+      NativeGeofenceStatus.needsBackgroundPermission ||
       NativeGeofenceStatus.unavailable => _state.message,
       NativeGeofenceStatus.ready ||
       NativeGeofenceStatus.running ||
@@ -265,10 +287,18 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
             ),
             if (!isRunning)
               AppButton(
-                label: '启动检测',
-                icon: AppPlatformIcon.play(context),
-                semanticHint: '请求后台定位权限并启动后台自动检测',
-                onPressed: _isBusy ? null : _start,
+                label: needsBackgroundPermission ? '去开启' : '启动检测',
+                icon: needsBackgroundPermission
+                    ? AppPlatformIcon.settings(context)
+                    : AppPlatformIcon.play(context),
+                semanticHint: needsBackgroundPermission
+                    ? '打开系统设置，将定位权限改为始终允许'
+                    : '启动后台自动检测',
+                onPressed: _isBusy
+                    ? null
+                    : needsBackgroundPermission
+                    ? _openBackgroundPermissionSettings
+                    : _start,
               ),
             if (isRunning)
               AppButton(
@@ -292,7 +322,7 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
     final confirmed = await showAppConfirmationDialog(
       context: context,
       title: '开启后台自动检测',
-      message: '后台自动检测需要系统后台定位权限。系统可能会先询问定位授权；授权后请再次点击启动检测完成开启。',
+      message: '后台自动检测需要系统后台定位权限。Android 会在你允许使用期间定位后，要求你到系统设置中选择“始终允许”。',
       confirmLabel: '继续',
     );
     if (!confirmed) {
@@ -302,11 +332,43 @@ class _NativeGeofenceCardState extends State<_NativeGeofenceCard> {
     await _run(() async {
       final authorizationState = await widget.nativeGeofence
           .requestAlwaysAuthorization();
+      if (authorizationState.status ==
+          NativeGeofenceStatus.needsBackgroundPermission) {
+        if (mounted) {
+          await _showBackgroundPermissionGuide();
+        }
+        return authorizationState;
+      }
       if (authorizationState.status != NativeGeofenceStatus.ready) {
         return authorizationState;
       }
       return widget.nativeGeofence.startMonitoring();
     });
+  }
+
+  Future<void> _openBackgroundPermissionSettings() async {
+    await _showBackgroundPermissionGuide();
+    if (!mounted) {
+      return;
+    }
+    await _refresh();
+  }
+
+  Future<void> _showBackgroundPermissionGuide() async {
+    final shouldOpen = await showAppConfirmationDialog(
+      context: context,
+      title: '开启后台定位权限',
+      message:
+          'Android 需要你在系统设置中手动选择“始终允许”。请在应用权限的“位置信息”中改为“始终允许”，回到应用后这里会自动刷新。',
+      confirmLabel: '去系统设置',
+    );
+    if (!shouldOpen || !mounted) {
+      return;
+    }
+    final opened = await widget.locationPermission.openSystemSettings();
+    if (!opened && mounted) {
+      AppNotice.show(context, '无法打开系统设置，请手动前往应用设置。');
+    }
   }
 
   Future<void> _stop() async {

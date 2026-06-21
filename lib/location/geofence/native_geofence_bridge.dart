@@ -1,7 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-enum NativeGeofenceStatus { ready, running, stopped, unsupported, unavailable }
+enum NativeGeofenceStatus {
+  ready,
+  running,
+  stopped,
+  needsBackgroundPermission,
+  unsupported,
+  unavailable,
+}
 
 enum NativeGeofenceTransition {
   enter('进入唤醒区'),

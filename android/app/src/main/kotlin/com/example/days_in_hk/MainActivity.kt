@@ -52,12 +52,12 @@ class MainActivity : FlutterActivity() {
             return
         }
 
-        result.success(
-            statusPayload(
-                "unavailable",
-                "请在系统设置中允许精确定位和后台定位，然后再次启动后台检测。"
-            )
-        )
+        if (hasFineLocationPermission()) {
+            result.success(backgroundPermissionPayload())
+            return
+        }
+
+        result.success(statusPayload("unavailable", "请先允许使用期间定位权限，再开启后台自动检测。"))
     }
 
     @SuppressLint("MissingPermission")
@@ -67,8 +67,13 @@ class MainActivity : FlutterActivity() {
             return
         }
 
-        if (!hasRequiredLocationPermission()) {
-            result.success(statusPayload("unavailable", "需要前台和后台定位权限后才能启动 Android Geofencing API。"))
+        if (!hasFineLocationPermission()) {
+            result.success(statusPayload("unavailable", "请先允许使用期间定位权限，再启动后台自动检测。"))
+            return
+        }
+
+        if (!hasBackgroundLocationPermission()) {
+            result.success(backgroundPermissionPayload())
             return
         }
 
@@ -113,11 +118,15 @@ class MainActivity : FlutterActivity() {
             )
         }
 
-        if (!hasRequiredLocationPermission()) {
+        if (!hasFineLocationPermission()) {
             return withLastEvent(
                 "status" to "unavailable",
-                "message" to "需要前台和后台定位权限后才能启动 Android Geofencing API。"
+                "message" to "请先允许使用期间定位权限，再开启后台自动检测。"
             )
+        }
+
+        if (!hasBackgroundLocationPermission()) {
+            return backgroundPermissionPayload()
         }
 
         if (forcedStatus != null && forcedMessage != null) {
@@ -144,14 +153,25 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun hasRequiredLocationPermission(): Boolean {
-        val hasFine = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-        if (!hasFine) {
-            return false
-        }
+        return hasFineLocationPermission() && hasBackgroundLocationPermission()
+    }
+
+    private fun hasFineLocationPermission(): Boolean {
+        return hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+
+    private fun hasBackgroundLocationPermission(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return true
         }
         return hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+    }
+
+    private fun backgroundPermissionPayload(): Map<String, Any?> {
+        return withLastEvent(
+            "status" to "needsBackgroundPermission",
+            "message" to "Android 11 及以上需要前往系统设置，将位置信息改为“始终允许”，才能启用后台自动检测。"
+        )
     }
 
     private fun hasPermission(permission: String): Boolean {

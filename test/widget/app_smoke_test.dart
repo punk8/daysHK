@@ -51,6 +51,7 @@ class FakeLocationPermissionService extends LocationPermissionService {
   FakeLocationPermissionService(this.status);
 
   AppLocationPermissionStatus status;
+  var openedSettings = false;
 
   @override
   Future<AppLocationPermissionStatus> checkStatus() async => status;
@@ -59,18 +60,25 @@ class FakeLocationPermissionService extends LocationPermissionService {
   Future<AppLocationPermissionStatus> requestPermission() async => status;
 
   @override
-  Future<bool> openSystemSettings() async => true;
+  Future<bool> openSystemSettings() async {
+    openedSettings = true;
+    return true;
+  }
 }
 
 class FakeNativeGeofenceBridge extends NativeGeofenceBridge {
-  const FakeNativeGeofenceBridge();
+  const FakeNativeGeofenceBridge([
+    this.state = const NativeGeofenceState(
+      status: NativeGeofenceStatus.ready,
+      message: '测试状态',
+    ),
+  ]);
+
+  final NativeGeofenceState state;
 
   @override
   Future<NativeGeofenceState> getStatus() async {
-    return const NativeGeofenceState(
-      status: NativeGeofenceStatus.ready,
-      message: '测试状态',
-    );
+    return state;
   }
 }
 
@@ -710,6 +718,45 @@ void main() {
     expect(find.text('后台自动检测'), findsOneWidget);
     expect(find.text('已准备'), findsOneWidget);
     expect(find.text('测试状态'), findsNothing);
+  });
+
+  testWidgets('Settings guides Android users to background location settings', (
+    tester,
+  ) async {
+    final permission = FakeLocationPermissionService(
+      AppLocationPermissionStatus.whileInUseOnly,
+    );
+    await tester.pumpWidget(
+      _TestHost(
+        child: SettingsPage(
+          records: const [],
+          locationDetection: LocationDetectionService(boundary),
+          locationPermission: permission,
+          nativeGeofence: const FakeNativeGeofenceBridge(
+            NativeGeofenceState(
+              status: NativeGeofenceStatus.needsBackgroundPermission,
+              message: 'Android 需要前往系统设置开启后台定位。',
+            ),
+          ),
+          onSaveCandidate: (_) async {},
+          onClearAll: () async {},
+          onShowRecords: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('需后台权限'), findsOneWidget);
+    expect(find.text('去开启'), findsOneWidget);
+    await tester.tap(find.text('去开启'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('开启后台定位权限'), findsOneWidget);
+    expect(find.textContaining('始终允许'), findsOneWidget);
+    await tester.tap(find.text('去系统设置'));
+    await tester.pumpAndSettle();
+
+    expect(permission.openedSettings, isTrue);
   });
 
   testWidgets('Settings info tiles open Cupertino detail pages', (
